@@ -6,7 +6,7 @@ ENV TZ="$TZ"
 ARG CLAUDE_CODE_VERSION=latest
 
 # Install basic development tools and iptables/ipset
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
   less \
   git \
   procps \
@@ -50,6 +50,9 @@ RUN bash -c "source ${NVM_DIR}/nvm.sh && nvm install 20 && nvm use 20 && nvm ali
 
 USER root
 
+# allow fully password-less sudo
+RUN echo "ALL            ALL = (ALL) NOPASSWD: ALL" > /etc/sudoers.d/no-passwd && chmod 0440 /etc/sudoers.d/no-passwd
+
 # Persist bash history.
 RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
   && mkdir /commandhistory \
@@ -86,10 +89,12 @@ ARG ZSH_IN_DOCKER_VERSION=1.2.0
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
   -p git \
   -p fzf \
-  -a "source /usr/share/doc/fzf/examples/key-bindings.zsh" \
-  -a "source /usr/share/doc/fzf/examples/completion.zsh" \
+# TODO: fix fzf
+#  -a "source /usr/share/doc/fzf/examples/key-bindings.zsh" \ 
+#  -a "source /usr/share/doc/fzf/examples/completion.zsh" \
   -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
   -a "export NVM_DIR=\"/home/ubuntu/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\" && [ -s \"\$NVM_DIR/bash_completion\" ] && source \"\$NVM_DIR/bash_completion\"" \
+  -a "alias claude-yolo='claude --dangerously-skip-permissions'" \
   -x
 
 # Install Claude as ubuntu user
