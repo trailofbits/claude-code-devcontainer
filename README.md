@@ -18,7 +18,7 @@ Originally based on the official Claude Code devcontainer at https://github.com/
 2. Clone this devcontainer configuration to your audits directory:
 
    ```
-   git clone git@github.com/trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
+   git clone git@github.com:trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
    ```
 
 3. Open the audits folder in VS Code and select "Reopen in Container" when prompted, or use:
