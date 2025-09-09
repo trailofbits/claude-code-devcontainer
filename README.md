@@ -28,7 +28,10 @@ Originally based on the official Claude Code devcontainer at https://github.com/
    code .
    ```
 
-4. VS Code will automatically build and start the development container
+4. VS Code will automatically build and start the development container. You may see this popup in the lower right.
+
+<img width="461" height="101" alt="Screenshot 2025-09-08 at 11 46 34 PM" src="https://github.com/user-attachments/assets/9c00280b-b2ee-4909-ac2f-c46cfcf6f52c" />
+
 
 ## Usage
 
