@@ -1,9 +1,9 @@
-# Security Audit Development Container
+# Claude Code in a devcontainer
 
-A pre-configured slightly-sandboxed development environment using Claude Code for auditing. Claude Code and common tools pre-installed.
+A pre-configured slightly-sandboxed development environment using Claude Code with the --dangerously-skip-permissions yolo mode.
+Claude Code and common tools pre-installed.
+
 You will have to re-authorize claude code with a plan or API key
-
-for security auditing and analysis work, built on Ubuntu 24.04 with essential tools and Claude Code integration.
 
 ## Features
 
@@ -11,20 +11,22 @@ for security auditing and analysis work, built on Ubuntu 24.04 with essential to
 
 ## Quick Start
 
-1. Clone this devcontainer configuration to your audits directory:
+1. Install the Dev Containers package in vscode. The package name is `ms-vscode-remote.remote-containers` in Microsoft's vscode and `anysphere.remote-containers` in Cursor.
 
-   ```bash
+2. Clone this devcontainer configuration to your audits directory:
+
+   ```
    git clone git@github.com/trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
    ```
 
-2. Open the audits folder in VS Code and select "Reopen in Container" when prompted, or use:
+3. Open the audits folder in VS Code and select "Reopen in Container" when prompted, or use:
 
-   ```bash
+   ```
    cd ~/audits
    code .
    ```
 
-3. VS Code will automatically build and start the development container
+4. VS Code will automatically build and start the development container
 
 ## Usage
 
@@ -44,3 +46,7 @@ claude doctor # shows config information
 - **Working Directory**: /workspace
 - **Shell**: zsh with Oh My Zsh
 - **Editor**: vim
+
+## Development
+
+In vscode action bar, choose "Install devcontainer CLI", then in a new terminal, you can run `devcontainer up` to build the docker image.
