@@ -1,9 +1,11 @@
 # Claude Code in a devcontainer
 
-A pre-configured slightly-sandboxed development environment using Claude Code with the --dangerously-skip-permissions yolo mode.
+A pre-configured slightly-sandboxed development environment using Claude Code with the `--dangerously-skip-permissions` yolo mode.
 Claude Code and common tools pre-installed.
 
-You will have to re-authorize claude code with a plan or API key
+You will have to re-authorize claude code with a plan or API key.
+
+Originally based on the official Claude Code devcontainer at https://github.com/anthropics/claude-code/tree/main/.devcontainer 
 
 ## Features
 
