@@ -1,4 +1,4 @@
-FROM node:20
+FROM ubuntu:24.04
 
 ARG TZ
 ENV TZ="$TZ"
@@ -25,13 +25,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq \
   nano \
   vim \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
+  curl \
+  ca-certificates \
+  locales \
+  build-essential \
+  wget \
+  && apt-get clean && rm -rf /var/lib/apt/lists/* \
+  && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
 
-# Ensure default node user has access to /usr/local/share
+ENV LANG=en_US.utf8
+
+# Ensure ubuntu user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \
-  chown -R node:node /usr/local/share
+  chown -R ubuntu:ubuntu /usr/local/share
 
-ARG USERNAME=node
+ARG USERNAME=ubuntu
+
+# setup node as the ubuntu user
+USER ubuntu
+RUN bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash"
+ENV NVM_DIR="/home/ubuntu/.nvm"
+# install node 20
+RUN bash -c "source ${NVM_DIR}/nvm.sh && nvm install 20 && nvm use 20 && nvm alias default 20"
+
+USER root
 
 # Persist bash history.
 RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
@@ -43,8 +60,8 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
 ENV DEVCONTAINER=true
 
 # Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/node/.claude && \
-  chown -R node:node /workspace /home/node/.claude
+RUN mkdir -p /workspace /home/ubuntu/.claude && \
+  chown -R ubuntu:ubuntu /workspace /home/ubuntu/.claude
 
 WORKDIR /workspace
 
@@ -55,11 +72,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
   rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
 
 # Set up non-root user
-USER node
-
-# Install global packages
-ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
-ENV PATH=$PATH:/usr/local/share/npm-global/bin
+USER ubuntu
 
 # Set the default shell to zsh rather than sh
 ENV SHELL=/bin/zsh
@@ -76,16 +89,10 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -a "source /usr/share/doc/fzf/examples/key-bindings.zsh" \
   -a "source /usr/share/doc/fzf/examples/completion.zsh" \
   -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
+  -a "export NVM_DIR=\"/home/ubuntu/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\" && [ -s \"\$NVM_DIR/bash_completion\" ] && source \"\$NVM_DIR/bash_completion\"" \
   -x
 
-# Install Claude
-RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+# Install Claude as ubuntu user
+USER ubuntu
+RUN bash -c "unset NPM_CONFIG_PREFIX && source /home/ubuntu/.nvm/nvm.sh && npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
-
-# Copy and set up firewall script
-COPY init-firewall.sh /usr/local/bin/
-USER root
-RUN chmod +x /usr/local/bin/init-firewall.sh && \
-  echo "node ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node-firewall && \
-  chmod 0440 /etc/sudoers.d/node-firewall
-USER node
