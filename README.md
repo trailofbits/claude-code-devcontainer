@@ -55,3 +55,5 @@ claude doctor # shows config information
 ## Development
 
 In vscode action bar, choose "Install devcontainer CLI", then in a new terminal, you can run `devcontainer up` to build the docker image.
+
+`devcontainer exec bash` or `devcontainer exec zsh` can be used to run a shell within the container if you'd like to use it outside of vscode
