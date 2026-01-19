@@ -1,59 +1,166 @@
 # Claude Code in a devcontainer
 
-A pre-configured slightly-sandboxed development environment using Claude Code with the `--dangerously-skip-permissions` yolo mode.
-Claude Code and common tools pre-installed.
-
-You will have to re-authorize claude code with a plan or API key.
-
-Originally based on the official Claude Code devcontainer at https://github.com/anthropics/claude-code/tree/main/.devcontainer 
+A pre-configured sandboxed development environment for Claude Code with `--dangerously-skip-permissions` mode automatically enabled.
 
 ## Features
 
-- **Claude Code** pre-installed and configured
+- **Claude Code** pre-installed with `bypassPermissions` auto-configured
+- **Multi-stage Docker build** for smaller images
+- **Node.js 23** and **Python 3.13** with **uv** package manager
+- **Modern CLI tools**: ripgrep, fd, tmux, fzf
+- **Session persistence**: command history, GitHub CLI auth, Claude config survive rebuilds
+- **Network tools**: iptables, ipset for security testing
 
 ## Quick Start
 
-1. Install the Dev Containers package in vscode. The package name is `ms-vscode-remote.remote-containers` in Microsoft's vscode and `anysphere.remote-containers` in Cursor.
+### Option 1: VS Code / Cursor
 
-2. Clone this devcontainer configuration to your audits directory:
+1. Install the Dev Containers extension:
+   - VS Code: `ms-vscode-remote.remote-containers`
+   - Cursor: `anysphere.remote-containers`
 
-   ```
+2. Clone this repo to your project directory:
+
+   ```bash
    git clone git@github.com:trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
    ```
 
-3. Open the audits folder in VS Code and select "Reopen in Container" when prompted, or use:
+3. Open the folder in VS Code and select "Reopen in Container" when prompted.
 
+### Option 2: Terminal (without VS Code)
+
+1. Install the devcontainer CLI:
+
+   ```bash
+   npm install -g @devcontainers/cli
    ```
-   cd ~/audits
-   code .
+
+2. Install the `devc` helper:
+
+   ```bash
+   ./install.sh self-install
    ```
 
-4. VS Code will automatically build and start the development container. You may see this popup in the lower right.
+3. Use `devc` to manage containers:
 
-<img width="461" height="101" alt="Screenshot 2025-09-08 at 11 46 34 PM" src="https://github.com/user-attachments/assets/9c00280b-b2ee-4909-ac2f-c46cfcf6f52c" />
+   ```bash
+   devc template ~/my-project  # Copy template to project
+   cd ~/my-project
+   devc up                     # Start container
+   devc shell                  # Open shell
+   devc rebuild                # Rebuild (preserves auth)
+   ```
 
+## CLI Helper Commands
 
-## Usage
-
-The container runs as the `ubuntu` user with passwordless sudo access. Node.js and npm are available through nvm, and Claude Code is installed globally.
-
-To verify the setup:
-
-```bash
-claude --version  # should show 1.0.x
-claude doctor # shows config information
+```
+devc .              Install template + start container in current directory
+devc up             Start the devcontainer
+devc rebuild        Rebuild container (preserves persistent volumes)
+devc down           Stop the container
+devc shell          Open zsh shell in container
+devc template DIR   Copy devcontainer files to directory
+devc self-install   Install devc to ~/.local/bin
 ```
 
 ## Container Details
 
-- **Base Image**: Ubuntu 24.04
-- **Default User**: ubuntu
-- **Working Directory**: /workspace
-- **Shell**: zsh with Oh My Zsh
-- **Editor**: vim
+| Feature | Value |
+|---------|-------|
+| Base Image | Ubuntu 25.04 |
+| Node.js | 23 (via multi-stage build) |
+| Python | 3.13 + uv |
+| Shell | zsh with Oh My Zsh |
+| User | ubuntu (passwordless sudo) |
+| Working Directory | /workspace |
+
+### Included Tools
+
+**Modern CLI:**
+- `rg` (ripgrep) - Fast grep replacement
+- `fd` (fdfind) - Fast find replacement
+- `tmux` - Terminal multiplexer (200k history)
+- `fzf` - Fuzzy finder
+- `delta` - Better git diffs
+
+**Network/Security:**
+- `iptables`, `ipset` - Firewall tools
+- `iproute2`, `dnsutils` - Network diagnostics
+
+## Persistent Volumes
+
+The following data persists across container rebuilds:
+
+| Volume | Path | Purpose |
+|--------|------|---------|
+| Command history | /commandhistory | zsh/bash history |
+| Claude config | ~/.claude | Settings, API keys |
+| GitHub CLI | ~/.config/gh | gh auth tokens |
+
+Your host `~/.gitconfig` is mounted read-only for git identity.
+
+## Auto-Configuration
+
+On container creation, `post_install.py` automatically:
+
+1. Sets Claude to `bypassPermissions` mode
+2. Creates tmux config with 200k scrollback
+3. Sets up git-delta as default pager
+4. Fixes volume ownership
+
+## Verification
+
+```bash
+claude --version          # Check Claude CLI version
+cat ~/.claude/settings.json  # Verify bypassPermissions
+python3 --version         # Python 3.13
+rg --version              # ripgrep
+fd --version              # fd-find
+tmux -V                   # tmux
+```
+
+## Troubleshooting
+
+### "devcontainer CLI not found"
+
+```bash
+npm install -g @devcontainers/cli
+```
+
+### Container won't start
+
+1. Check Docker is running
+2. Try rebuilding: `devc rebuild`
+3. Check logs: `docker logs $(docker ps -lq)`
+
+### GitHub CLI auth not persisting
+
+The gh volume may need ownership fix:
+
+```bash
+sudo chown -R $(id -u):$(id -g) ~/.config/gh
+```
+
+### Python/uv not working
+
+Python is installed via uv. Use:
+
+```bash
+uv run python script.py  # Run with uv
+uv pip install package   # Install packages
+```
 
 ## Development
 
-In vscode action bar, choose "Install devcontainer CLI", then in a new terminal, you can run `devcontainer up` to build the docker image.
+Build the image manually:
 
-`devcontainer exec bash` or `devcontainer exec zsh` can be used to run a shell within the container if you'd like to use it outside of vscode
+```bash
+devcontainer build --workspace-folder .
+```
+
+Test the container:
+
+```bash
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . zsh
+```

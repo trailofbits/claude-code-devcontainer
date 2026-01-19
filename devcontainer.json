@@ -3,10 +3,10 @@
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
-      "TZ": "${localEnv:TZ:America/New York}",
+      "TZ": "${localEnv:TZ:America/New_York}",
       "CLAUDE_CODE_VERSION": "latest",
       "GIT_DELTA_VERSION": "0.18.2",
-      "ZSH_IN_DOCKER_VERSION": "1.2.0"
+      "ZSH_IN_DOCKER_VERSION": "1.2.1"
     }
   },
   "runArgs": [
@@ -43,7 +43,9 @@
   "remoteUser": "ubuntu",
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=claude-code-config-${devcontainerId},target=/home/ubuntu/.claude,type=volume"
+    "source=claude-code-config-${devcontainerId},target=/home/ubuntu/.claude,type=volume",
+    "source=claude-code-gh-${devcontainerId},target=/home/ubuntu/.config/gh,type=volume",
+    "source=${localEnv:HOME}/.gitconfig,target=/home/ubuntu/.gitconfig,type=bind,readonly"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
@@ -52,4 +54,5 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
+  "postCreateCommand": "python3 /opt/post_install.py"
 }
