@@ -99,6 +99,41 @@ The following data persists across container rebuilds:
 
 Your host `~/.gitconfig` is mounted read-only for git identity.
 
+## Security Model
+
+This devcontainer provides **filesystem isolation** but not complete sandboxing.
+
+### What IS sandboxed
+
+- **Filesystem**: Container has its own filesystem; your host files outside the mounted workspace are inaccessible
+- **Processes**: Container processes are isolated from host processes
+- **Package installations**: npm/pip installs stay in the container
+
+### What is NOT sandboxed
+
+- **Network**: Full outbound network access (can make API calls, download packages, etc.)
+- **Git identity**: Your `~/.gitconfig` is mounted read-only
+- **Docker socket**: Not mounted by default, but can be added if needed
+
+### The `bypassPermissions` setting
+
+This container auto-configures Claude Code with `bypassPermissions` mode, which:
+
+- Allows Claude to run commands without confirmation prompts
+- Is appropriate here because the container itself is the sandbox
+- Would be risky on a host machine but is safe in this isolated environment
+
+### Network isolation (optional)
+
+For stricter security, you can enable network restrictions using the included iptables tools:
+
+```bash
+# Example: Block all outbound except specific hosts
+sudo iptables -A OUTPUT -d api.anthropic.com -j ACCEPT
+sudo iptables -A OUTPUT -d github.com -j ACCEPT
+sudo iptables -A OUTPUT -j DROP
+```
+
 ## Auto-Configuration
 
 On container creation, `post_install.py` automatically:

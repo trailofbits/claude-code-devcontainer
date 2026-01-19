@@ -59,9 +59,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
   dpkg -i /tmp/git-delta.deb && \
   rm /tmp/git-delta.deb
 
-# Install uv (Python package manager)
-ENV UV_INSTALL_DIR="/usr/local/bin"
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+# Install uv (Python package manager) via multi-stage copy
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 ARG USERNAME=ubuntu
 

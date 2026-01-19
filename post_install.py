@@ -107,8 +107,10 @@ def setup_git_config():
     """Set up git delta as the default pager if not already configured."""
     gitconfig = Path.home() / ".gitconfig"
 
-    # Only add delta config if .gitconfig doesn't exist or doesn't have pager config
-    if not gitconfig.exists():
+    # Skip if .gitconfig exists (likely mounted from host)
+    if gitconfig.exists():
+        print(f"[post_install] Git config exists (mounted from host): {gitconfig}")
+    else:
         config = """\
 [core]
     pager = delta
@@ -131,6 +133,79 @@ def setup_git_config():
         print(f"[post_install] Git config created: {gitconfig}")
 
 
+def setup_global_gitignore():
+    """Set up global gitignore and local git config.
+
+    Since ~/.gitconfig is mounted read-only from host, we create a local
+    config file that includes the host config and adds container-specific
+    settings like core.excludesfile.
+
+    GIT_CONFIG_GLOBAL env var (set in devcontainer.json) points git to this
+    local config as the "global" config.
+    """
+    home = Path.home()
+    gitignore = home / ".gitignore_global"
+    local_gitconfig = home / ".gitconfig.local"
+    host_gitconfig = home / ".gitconfig"
+
+    # Create global gitignore with common patterns
+    patterns = """\
+# Claude Code
+.claude/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.npm/
+
+# Editors
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-*
+
+# Misc
+*.log
+.env.local
+.env.*.local
+"""
+    gitignore.write_text(patterns)
+    print(f"[post_install] Global gitignore created: {gitignore}")
+
+    # Create local git config that includes host config and sets excludesfile
+    local_config = f"""\
+# Container-local git config
+# Includes host config (mounted read-only) and adds container settings
+
+[include]
+    path = {host_gitconfig}
+
+[core]
+    excludesfile = {gitignore}
+"""
+    local_gitconfig.write_text(local_config)
+    print(f"[post_install] Local git config created: {local_gitconfig}")
+
+
 def main():
     """Run all post-install configuration."""
     print("[post_install] Starting post-install configuration...")
@@ -139,6 +214,7 @@ def main():
     setup_tmux_config()
     fix_directory_ownership()
     setup_git_config()
+    setup_global_gitignore()
 
     print("[post_install] Configuration complete!")
 
