@@ -1,13 +1,23 @@
 {
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
   "name": "Claude Code Sandbox",
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
       "TZ": "${localEnv:TZ:America/New_York}",
-      "CLAUDE_CODE_VERSION": "latest",
       "GIT_DELTA_VERSION": "0.18.2",
       "ZSH_IN_DOCKER_VERSION": "1.2.1"
     }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.13"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/tailscale/codespace/tailscale:1": {}
   },
   "runArgs": [
     "--cap-add=NET_ADMIN",
@@ -40,20 +50,20 @@
       }
     }
   },
-  "remoteUser": "ubuntu",
+  "remoteUser": "vscode",
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=claude-code-config-${devcontainerId},target=/home/ubuntu/.claude,type=volume",
-    "source=claude-code-gh-${devcontainerId},target=/home/ubuntu/.config/gh,type=volume",
-    "source=${localEnv:HOME}/.gitconfig,target=/home/ubuntu/.gitconfig,type=bind,readonly"
+    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    "source=claude-code-gh-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
-    "CLAUDE_CONFIG_DIR": "/home/ubuntu/.claude",
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
     "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
-    "GIT_CONFIG_GLOBAL": "/home/ubuntu/.gitconfig.local"
+    "GIT_CONFIG_GLOBAL": "/home/vscode/.gitconfig.local"
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": "uv run /opt/post_install.py"
+  "postCreateCommand": "npm install -g pnpm && uv run /opt/post_install.py"
 }
