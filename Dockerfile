@@ -63,6 +63,10 @@ USER vscode
 # Install Claude Code natively
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
+# Install Python 3.13 via uv (fast binary download, not source compilation)
+RUN uv python install 3.13 --default
+ENV PATH="/home/vscode/.local/bin:$PATH"
+
 # Install Oh My Zsh
 ARG ZSH_IN_DOCKER_VERSION=1.2.1
 RUN sh -c "$(curl -fsSL https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
