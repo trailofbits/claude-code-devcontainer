@@ -1,103 +1,84 @@
-FROM ubuntu:24.04
+# Claude Code Devcontainer
+# Based on Microsoft devcontainer image for better devcontainer integration
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
 ARG TZ
 ENV TZ="$TZ"
 
-ARG CLAUDE_CODE_VERSION=latest
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install basic development tools and iptables/ipset
-RUN apt-get update && apt-get install -y \
-  less \
-  git \
-  procps \
-  sudo \
+# Install additional system packages (base image already includes git, curl, sudo, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  # Modern CLI tools
   fzf \
+  ripgrep \
+  fd-find \
+  tmux \
   zsh \
-  man-db \
+  # Build tools
+  build-essential \
+  # Utilities
+  jq \
+  nano \
+  vim \
   unzip \
-  gnupg2 \
-  gh \
+  # Network tools (for security testing)
   iptables \
   ipset \
   iproute2 \
   dnsutils \
-  aggregate \
-  jq \
-  nano \
-  vim \
-  curl \
-  ca-certificates \
-  locales \
-  build-essential \
-  wget \
-  && apt-get clean && rm -rf /var/lib/apt/lists/* \
-  && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV LANG=en_US.utf8
-
-# Ensure ubuntu user has access to /usr/local/share
-RUN mkdir -p /usr/local/share/npm-global && \
-  chown -R ubuntu:ubuntu /usr/local/share
-
-ARG USERNAME=ubuntu
-
-# setup node as the ubuntu user
-USER ubuntu
-RUN bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash"
-ENV NVM_DIR="/home/ubuntu/.nvm"
-# install node 20
-RUN bash -c "source ${NVM_DIR}/nvm.sh && nvm install 20 && nvm use 20 && nvm alias default 20"
-
-USER root
-
-# allow fully password-less sudo
-RUN echo "ALL            ALL = (ALL) NOPASSWD: ALL" > /etc/sudoers.d/no-passwd && chmod 0440 /etc/sudoers.d/no-passwd
-
-# Persist bash history.
-RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
-  && mkdir /commandhistory \
-  && touch /commandhistory/.bash_history \
-  && chown -R $USERNAME /commandhistory
-
-# Set `DEVCONTAINER` environment variable to help with orientation
-ENV DEVCONTAINER=true
-
-# Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/ubuntu/.claude && \
-  chown -R ubuntu:ubuntu /workspace /home/ubuntu/.claude
-
-WORKDIR /workspace
-
+# Install git-delta
 ARG GIT_DELTA_VERSION=0.18.2
 RUN ARCH=$(dpkg --print-architecture) && \
-  wget "https://github.com/dandavison/delta/releases/download/${GIT_DELTA_VERSION}/git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
-  sudo dpkg -i "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
-  rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
+  curl -fsSL "https://github.com/dandavison/delta/releases/download/${GIT_DELTA_VERSION}/git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" -o /tmp/git-delta.deb && \
+  dpkg -i /tmp/git-delta.deb && \
+  rm /tmp/git-delta.deb
 
-# Set up non-root user
-USER ubuntu
+# Install uv (Python package manager) via multi-stage copy
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Set the default shell to zsh rather than sh
+# Persist command history
+RUN mkdir -p /commandhistory && \
+  touch /commandhistory/.bash_history && \
+  touch /commandhistory/.zsh_history && \
+  chown -R vscode /commandhistory
+
+# Set environment variables
+ENV DEVCONTAINER=true
 ENV SHELL=/bin/zsh
-
-# Set the default editor and visual
 ENV EDITOR=nano
 ENV VISUAL=nano
 
-# Default powerline10k theme
-ARG ZSH_IN_DOCKER_VERSION=1.2.0
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
+# Create workspace and config directories
+RUN mkdir -p /workspace /home/vscode/.claude /opt && \
+  chown -R vscode:vscode /workspace /home/vscode/.claude /opt
+
+WORKDIR /workspace
+
+# Switch to non-root user for remaining setup
+USER vscode
+
+# Install Claude Code natively
+RUN curl -fsSL https://claude.ai/install.sh | bash
+
+# Install Python 3.13 via uv (fast binary download, not source compilation)
+RUN uv python install 3.13 --default
+ENV PATH="/home/vscode/.local/bin:$PATH"
+
+# Install Oh My Zsh
+ARG ZSH_IN_DOCKER_VERSION=1.2.1
+RUN sh -c "$(curl -fsSL https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
   -p git \
   -p fzf \
-# TODO: fix fzf
-#  -a "source /usr/share/doc/fzf/examples/key-bindings.zsh" \ 
-#  -a "source /usr/share/doc/fzf/examples/completion.zsh" \
-  -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
-  -a "export NVM_DIR=\"/home/ubuntu/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && source \"\$NVM_DIR/nvm.sh\" && [ -s \"\$NVM_DIR/bash_completion\" ] && source \"\$NVM_DIR/bash_completion\"" \
-  -a "alias claude-yolo='claude --dangerously-skip-permissions'" \
   -x
 
-# Install Claude as ubuntu user
-USER ubuntu
-RUN bash -c "unset NPM_CONFIG_PREFIX && source /home/ubuntu/.nvm/nvm.sh && npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+# Copy zsh configuration
+COPY --chown=vscode:vscode .zshrc /home/vscode/.zshrc.custom
 
+# Append custom zshrc to the main one
+RUN echo 'source ~/.zshrc.custom' >> /home/vscode/.zshrc
+
+# Copy post_install script
+COPY --chown=vscode:vscode post_install.py /opt/post_install.py
