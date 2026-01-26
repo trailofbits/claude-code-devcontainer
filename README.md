@@ -35,13 +35,19 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
    npm install -g @devcontainers/cli
    ```
 
-2. Install the `devc` helper:
+2. Clone this repo:
 
    ```bash
-   ./install.sh self-install
+   git clone git@github.com:trailofbits/claude-code-devcontainer ~/.claude-devcontainer
    ```
 
-3. Use `devc` to manage containers:
+3. Install the `devc` helper:
+
+   ```bash
+   ~/.claude-devcontainer/install.sh self-install
+   ```
+
+4. Use `devc` to manage containers:
 
    ```bash
    devc template ~/my-project  # Copy template to project
