@@ -6,7 +6,7 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
 
 - **Claude Code** pre-installed with `bypassPermissions` auto-configured
 - **Multi-stage Docker build** for smaller images
-- **Node.js 23** and **Python 3.13** with **uv** package manager
+- **Node.js 22** and **Python 3.13** with **uv** package manager
 - **Modern CLI tools**: ripgrep, fd, tmux, fzf
 - **Session persistence**: command history, GitHub CLI auth, Claude config survive rebuilds
 - **Network tools**: iptables, ipset for security testing
@@ -35,13 +35,19 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
    npm install -g @devcontainers/cli
    ```
 
-2. Install the `devc` helper:
+2. Clone this repo:
 
    ```bash
-   ./install.sh self-install
+   git clone git@github.com:trailofbits/claude-code-devcontainer ~/.claude-devcontainer
    ```
 
-3. Use `devc` to manage containers:
+3. Install the `devc` helper:
+
+   ```bash
+   ~/.claude-devcontainer/install.sh self-install
+   ```
+
+4. Use `devc` to manage containers:
 
    ```bash
    devc template ~/my-project  # Copy template to project
@@ -67,11 +73,11 @@ devc self-install   Install devc to ~/.local/bin
 
 | Feature | Value |
 |---------|-------|
-| Base Image | Ubuntu 25.04 |
-| Node.js | 23 (via multi-stage build) |
+| Base Image | Ubuntu 24.04 |
+| Node.js | 22 (via devcontainer feature) |
 | Python | 3.13 + uv |
 | Shell | zsh with Oh My Zsh |
-| User | ubuntu (passwordless sudo) |
+| User | vscode (passwordless sudo) |
 | Working Directory | /workspace |
 
 ### Included Tools
@@ -142,6 +148,7 @@ On container creation, `post_install.py` automatically:
 2. Creates tmux config with 200k scrollback
 3. Sets up git-delta as default pager
 4. Fixes volume ownership
+5. Creates global gitignore with common patterns
 
 ## Verification
 
