@@ -56,13 +56,14 @@ Verify with `colima status` - should show "macOS Virtualization.Framework" and "
    - VS Code: `ms-vscode-remote.remote-containers`
    - Cursor: `anysphere.remote-containers`
 
-2. Clone this repo to your project directory:
+2. Clone this repo into your project's `.devcontainer/` folder:
 
    ```bash
-   git clone https://github.com/trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
+   cd ~/path/to/your/project
+   git clone https://github.com/trailofbits/claude-code-devcontainer .devcontainer/
    ```
 
-3. Open the folder in VS Code, then reopen in the container:
+3. Open **your project folder** (not `.devcontainer/`) in VS Code, then reopen in the container:
    - Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
    - Type "Reopen in Container" and select **Dev Containers: Reopen in Container**
 
