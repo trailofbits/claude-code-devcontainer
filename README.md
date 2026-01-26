@@ -17,6 +17,37 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
   - [Docker Desktop](https://docker.com/products/docker-desktop) - ensure it's running
   - [Colima](https://github.com/abiosoft/colima): `brew install colima docker && colima start`
 
+<details>
+<summary><strong>Optimizing Colima for Apple Silicon</strong></summary>
+
+Colima's defaults (QEMU + sshfs) are conservative. For better performance:
+
+```bash
+# Stop and delete current VM (removes containers/images)
+colima stop && colima delete
+
+# Start with optimized settings
+colima start \
+  --cpu 4 \
+  --memory 8 \
+  --disk 100 \
+  --vm-type vz \
+  --vz-rosetta \
+  --mount-type virtiofs
+```
+
+Adjust `--cpu` and `--memory` based on your Mac (e.g., 6/16 for Pro, 8/32 for Max).
+
+| Option | Benefit |
+|--------|---------|
+| `--vm-type vz` | Apple Virtualization.framework (faster than QEMU) |
+| `--mount-type virtiofs` | 5-10x faster file I/O than sshfs |
+| `--vz-rosetta` | Run x86 containers via Rosetta |
+
+Verify with `colima status` - should show "macOS Virtualization.Framework" and "virtiofs".
+
+</details>
+
 ## Quick Start
 
 ### Option 1: VS Code / Cursor
