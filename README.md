@@ -22,7 +22,7 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
 2. Clone this repo to your project directory:
 
    ```bash
-   git clone git@github.com:trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
+   git clone https://github.com/trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
    ```
 
 3. Open the folder in VS Code and select "Reopen in Container" when prompted.
@@ -38,7 +38,7 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
 2. Clone this repo:
 
    ```bash
-   git clone git@github.com:trailofbits/claude-code-devcontainer ~/.claude-devcontainer
+   git clone https://github.com/trailofbits/claude-code-devcontainer ~/.claude-devcontainer
    ```
 
 3. Install the `devc` helper:
