@@ -11,6 +11,12 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
 - **Session persistence**: command history, GitHub CLI auth, Claude config survive rebuilds
 - **Network tools**: iptables, ipset for security testing
 
+## Prerequisites
+
+- **Docker runtime** (one of):
+  - [Docker Desktop](https://docker.com/products/docker-desktop) - ensure it's running
+  - [Colima](https://github.com/abiosoft/colima): `brew install colima docker && colima start`
+
 ## Quick Start
 
 ### Option 1: VS Code / Cursor
@@ -25,7 +31,9 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
    git clone https://github.com/trailofbits/claude-code-devcontainer ~/audits/.devcontainer/
    ```
 
-3. Open the folder in VS Code and select "Reopen in Container" when prompted.
+3. Open the folder in VS Code, then reopen in the container:
+   - Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+   - Type "Reopen in Container" and select **Dev Containers: Reopen in Container**
 
 ### Option 2: Terminal (without VS Code)
 
