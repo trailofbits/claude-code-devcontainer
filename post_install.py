@@ -138,7 +138,7 @@ def setup_global_gitignore():
 
     Since ~/.gitconfig is mounted read-only from host, we create a local
     config file that includes the host config and adds container-specific
-    settings like core.excludesfile.
+    settings like core.excludesfile and delta configuration.
 
     GIT_CONFIG_GLOBAL env var (set in devcontainer.json) points git to this
     local config as the "global" config.
@@ -191,7 +191,8 @@ node_modules/
     gitignore.write_text(patterns)
     print(f"[post_install] Global gitignore created: {gitignore}")
 
-    # Create local git config that includes host config and sets excludesfile
+    # Create local git config that includes host config and sets excludesfile + delta
+    # Delta config is included here so it works even if host doesn't have it configured
     local_config = f"""\
 # Container-local git config
 # Includes host config (mounted read-only) and adds container settings
@@ -201,6 +202,22 @@ node_modules/
 
 [core]
     excludesfile = {gitignore}
+    pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true
+    light = false
+    line-numbers = true
+    side-by-side = false
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
 """
     local_gitconfig.write_text(local_config)
     print(f"[post_install] Local git config created: {local_gitconfig}")
