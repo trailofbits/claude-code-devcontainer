@@ -39,21 +39,17 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Install uv (Python package manager) via multi-stage copy
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Persist command history
-RUN mkdir -p /commandhistory && \
+# Create directories and set ownership (combined for fewer layers)
+RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /opt && \
   touch /commandhistory/.bash_history && \
   touch /commandhistory/.zsh_history && \
-  chown -R vscode /commandhistory
+  chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /opt
 
 # Set environment variables
 ENV DEVCONTAINER=true
 ENV SHELL=/bin/zsh
 ENV EDITOR=nano
 ENV VISUAL=nano
-
-# Create workspace and config directories
-RUN mkdir -p /workspace /home/vscode/.claude /opt && \
-  chown -R vscode:vscode /workspace /home/vscode/.claude /opt
 
 WORKDIR /workspace
 
@@ -69,6 +65,15 @@ ENV PATH="/home/vscode/.local/bin:$PATH"
 
 # Install ast-grep (AST-based code search)
 RUN uv tool install ast-grep-cli
+
+# Install fnm (Fast Node Manager) and Node 22
+ARG NODE_VERSION=22
+ENV FNM_DIR="/home/vscode/.fnm"
+RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_DIR" --skip-shell && \
+  export PATH="$FNM_DIR:$PATH" && \
+  eval "$(fnm env)" && \
+  fnm install ${NODE_VERSION} && \
+  fnm default ${NODE_VERSION}
 
 # Install Oh My Zsh
 ARG ZSH_IN_DOCKER_VERSION=1.2.1
