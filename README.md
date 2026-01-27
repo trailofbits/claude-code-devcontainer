@@ -15,6 +15,7 @@ A pre-configured sandboxed development environment for Claude Code with `--dange
 
 - **Docker runtime** (one of):
   - [Docker Desktop](https://docker.com/products/docker-desktop) - ensure it's running
+  - [OrbStack](https://orbstack.dev/)
   - [Colima](https://github.com/abiosoft/colima): `brew install colima docker && colima start`
 
 <details>
