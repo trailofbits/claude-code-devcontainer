@@ -82,3 +82,6 @@ RUN echo 'source ~/.zshrc.custom' >> /home/vscode/.zshrc
 
 # Copy post_install script
 COPY --chown=vscode:vscode post_install.py /opt/post_install.py
+
+# Copy Claude configuration
+COPY --chown=vscode:vscode CLAUDE.md /home/vscode/.claude/CLAUDE.md
