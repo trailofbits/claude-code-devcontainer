@@ -3,6 +3,11 @@
 # Add Claude Code to PATH
 export PATH="$HOME/.local/bin:$PATH"
 
+# fnm (Fast Node Manager)
+export FNM_DIR="$HOME/.fnm"
+export PATH="$FNM_DIR:$PATH"
+eval "$(fnm env --use-on-cd)"
+
 # History settings
 export HISTFILE=/commandhistory/.zsh_history
 export HISTSIZE=200000
