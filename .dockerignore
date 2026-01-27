@@ -1,0 +1,5 @@
+.git
+*.md
+.github
+.vscode
+*.log

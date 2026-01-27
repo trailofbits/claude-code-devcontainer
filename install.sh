@@ -96,7 +96,7 @@ cmd_template() {
 
 cmd_up() {
   local workspace_folder
-  workspace_folder="$(get_workspace_folder "$1")"
+  workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
   log_info "Starting devcontainer in $workspace_folder..."
@@ -107,7 +107,7 @@ cmd_up() {
 
 cmd_rebuild() {
   local workspace_folder
-  workspace_folder="$(get_workspace_folder "$1")"
+  workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
   log_info "Rebuilding devcontainer in $workspace_folder..."
@@ -118,7 +118,7 @@ cmd_rebuild() {
 
 cmd_down() {
   local workspace_folder
-  workspace_folder="$(get_workspace_folder "$1")"
+  workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
   log_info "Stopping devcontainer..."
