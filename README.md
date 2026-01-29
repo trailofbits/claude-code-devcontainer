@@ -169,10 +169,7 @@ This container auto-configures Claude Code with `bypassPermissions` mode, which:
 - Is appropriate here because the container itself is the sandbox
 - Would be risky on a host machine but is safe in this isolated environment
 
-<details>
-<summary><strong>Reference</strong></summary>
-
-### Container Details
+## Container Details
 
 | Feature | Value |
 |---------|-------|
@@ -183,13 +180,13 @@ This container auto-configures Claude Code with `bypassPermissions` mode, which:
 | User | vscode (passwordless sudo) |
 | Working Directory | /workspace |
 
-### Included Tools
+## Included Tools
 
 **Modern CLI:** `rg` (ripgrep), `fd` (fdfind), `tmux` (200k history), `fzf`, `delta`
 
 **Network/Security:** `iptables`, `ipset`, `iproute2`, `dnsutils`
 
-### Persistent Volumes
+## Persistent Volumes
 
 | Volume | Path | Purpose |
 |--------|------|---------|
@@ -199,11 +196,11 @@ This container auto-configures Claude Code with `bypassPermissions` mode, which:
 
 Your host `~/.gitconfig` is mounted read-only for git identity.
 
-### Auto-Configuration
+## Auto-Configuration
 
-On container creation, `post_install.py` automatically sets `bypassPermissions` mode, creates tmux config with 200k scrollback, sets up git-delta as default pager, fixes volume ownership, and creates global gitignore.
+On container creation, `post_install.py` automatically sets `bypassPermissions` mode, installs [anthropics](https://github.com/anthropics/claude-code-plugins) and [trailofbits](https://github.com/trailofbits/claude-code-plugins) Claude Code skills, creates tmux config with 200k scrollback, sets up git-delta as default pager, fixes volume ownership, and creates global gitignore.
 
-### Verification
+## Verification
 
 ```bash
 claude --version          # Check Claude CLI version
@@ -211,8 +208,6 @@ cat ~/.claude/settings.json  # Verify bypassPermissions
 python3 --version         # Python 3.13
 rg --version              # ripgrep
 ```
-
-</details>
 
 ## Troubleshooting
 
