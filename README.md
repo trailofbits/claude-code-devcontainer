@@ -165,15 +165,15 @@ The container auto-configures `bypassPermissions` mode—Claude runs commands wi
 
 ## Container Details
 
-**Base:** Ubuntu 24.04, Node.js 22, Python 3.13 + uv, zsh with Oh My Zsh. User `vscode` with passwordless sudo, working directory `/workspace`.
+| Component | Details |
+|-----------|---------|
+| Base | Ubuntu 24.04, Node.js 22, Python 3.13 + uv, zsh |
+| User | `vscode` (passwordless sudo), working dir `/workspace` |
+| Tools | `rg`, `fd`, `tmux`, `fzf`, `delta`, `iptables`, `ipset` |
+| Volumes (survive rebuilds) | Command history, Claude config, GitHub CLI auth |
+| Auto-configured | [anthropics](https://github.com/anthropics/claude-code-plugins) + [trailofbits](https://github.com/trailofbits/claude-code-plugins) skills, git-delta |
 
-**Tools:** `rg`, `fd`, `tmux` (200k history), `fzf`, `delta`, `iptables`, `ipset`, `iproute2`, `dnsutils`
-
-**Persisted across rebuilds:** Command history (`/commandhistory`), Claude config (`~/.claude`), GitHub CLI auth (`~/.config/gh`). Host `~/.gitconfig` mounted read-only.
-
-**Auto-configured:** [anthropics](https://github.com/anthropics/claude-code-plugins) and [trailofbits](https://github.com/trailofbits/claude-code-plugins) skills, tmux 200k scrollback, git-delta pager, global gitignore.
-
-**Verify:** `claude --version`, `cat ~/.claude/settings.json`
+Volumes are stored outside the container, so your shell history, Claude settings, and `gh` login persist even after `devc rebuild`. Host `~/.gitconfig` is mounted read-only for git identity.
 
 ## Troubleshooting
 
