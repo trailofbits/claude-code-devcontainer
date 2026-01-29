@@ -20,6 +20,14 @@ Running Claude with `bypassPermissions` on your host machine is risky—it can e
   - [OrbStack](https://orbstack.dev/)
   - [Colima](https://github.com/abiosoft/colima): `brew install colima docker && colima start`
 
+- **For terminal workflows** (one-time install):
+
+  ```bash
+  npm install -g @devcontainers/cli
+  git clone https://github.com/trailofbits/claude-code-devcontainer ~/.claude-devcontainer
+  ~/.claude-devcontainer/install.sh self-install
+  ```
+
 <details>
 <summary><strong>Optimizing Colima for Apple Silicon</strong></summary>
 
@@ -77,17 +85,9 @@ Each project gets its own container with independent volumes. Best for one-off r
    - Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
    - Type "Reopen in Container" and select **Dev Containers: Reopen in Container**
 
-**Terminal (without VS Code):**
+**Terminal:**
 
 ```bash
-# Install devcontainer CLI if needed
-npm install -g @devcontainers/cli
-
-# Install the devc helper (one-time)
-git clone https://github.com/trailofbits/claude-code-devcontainer ~/.claude-devcontainer
-~/.claude-devcontainer/install.sh self-install
-
-# Clone untrusted repo and start container
 git clone <untrusted-repo>
 cd untrusted-repo
 devc .          # Installs template + starts container
