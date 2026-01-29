@@ -233,11 +233,12 @@ sudo chown -R $(id -u):$(id -g) ~/.config/gh
 
 ### Python/uv not working
 
-Python is installed via uv. Use:
+Python is managed via uv:
 
 ```bash
-uv run python script.py  # Run with uv
-uv pip install package   # Install packages
+uv run script.py              # Run a script
+uv add package                # Add project dependency
+uv run --with requests py.py  # Ad-hoc dependency
 ```
 
 ## Development
