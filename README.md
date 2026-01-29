@@ -161,13 +161,7 @@ This devcontainer provides **filesystem isolation** but not complete sandboxing.
 
 **Not sandboxed:** Network (full outbound by default—see [Network Isolation](#network-isolation)), git identity (`~/.gitconfig` mounted read-only), Docker socket (not mounted by default)
 
-### The `bypassPermissions` Setting
-
-This container auto-configures Claude Code with `bypassPermissions` mode, which:
-
-- Allows Claude to run commands without confirmation prompts
-- Is appropriate here because the container itself is the sandbox
-- Would be risky on a host machine but is safe in this isolated environment
+The container auto-configures `bypassPermissions` mode—Claude runs commands without confirmation. This would be risky on a host machine, but the container itself is the sandbox.
 
 ## Container Details
 
