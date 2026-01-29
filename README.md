@@ -165,43 +165,15 @@ The container auto-configures `bypassPermissions` mode—Claude runs commands wi
 
 ## Container Details
 
-| Feature | Value |
-|---------|-------|
-| Base Image | Ubuntu 24.04 |
-| Node.js | 22 (via devcontainer feature) |
-| Python | 3.13 + uv |
-| Shell | zsh with Oh My Zsh |
-| User | vscode (passwordless sudo) |
-| Working Directory | /workspace |
+**Base:** Ubuntu 24.04, Node.js 22, Python 3.13 + uv, zsh with Oh My Zsh. User `vscode` with passwordless sudo, working directory `/workspace`.
 
-## Included Tools
+**Tools:** `rg`, `fd`, `tmux` (200k history), `fzf`, `delta`, `iptables`, `ipset`, `iproute2`, `dnsutils`
 
-**Modern CLI:** `rg` (ripgrep), `fd` (fdfind), `tmux` (200k history), `fzf`, `delta`
+**Persisted across rebuilds:** Command history (`/commandhistory`), Claude config (`~/.claude`), GitHub CLI auth (`~/.config/gh`). Host `~/.gitconfig` mounted read-only.
 
-**Network/Security:** `iptables`, `ipset`, `iproute2`, `dnsutils`
+**Auto-configured:** [anthropics](https://github.com/anthropics/claude-code-plugins) and [trailofbits](https://github.com/trailofbits/claude-code-plugins) skills, tmux 200k scrollback, git-delta pager, global gitignore.
 
-## Persistent Volumes
-
-| Volume | Path | Purpose |
-|--------|------|---------|
-| Command history | /commandhistory | zsh/bash history |
-| Claude config | ~/.claude | Settings, API keys |
-| GitHub CLI | ~/.config/gh | gh auth tokens |
-
-Your host `~/.gitconfig` is mounted read-only for git identity.
-
-## Auto-Configuration
-
-On container creation, `post_install.py` automatically sets `bypassPermissions` mode, installs [anthropics](https://github.com/anthropics/claude-code-plugins) and [trailofbits](https://github.com/trailofbits/claude-code-plugins) Claude Code skills, creates tmux config with 200k scrollback, sets up git-delta as default pager, fixes volume ownership, and creates global gitignore.
-
-## Verification
-
-```bash
-claude --version          # Check Claude CLI version
-cat ~/.claude/settings.json  # Verify bypassPermissions
-python3 --version         # Python 3.13
-rg --version              # ripgrep
-```
+**Verify:** `claude --version`, `cat ~/.claude/settings.json`
 
 ## Troubleshooting
 
