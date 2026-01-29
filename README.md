@@ -1,15 +1,17 @@
 # Claude Code in a devcontainer
 
-A pre-configured sandboxed development environment for Claude Code with `--dangerously-skip-permissions` mode automatically enabled.
+A sandboxed development environment for running Claude Code with `bypassPermissions` safely enabled. Built at [Trail of Bits](https://www.trailofbits.com/) for security audit workflows.
 
-## Features
+## Why Use This?
 
-- **Claude Code** pre-installed with `bypassPermissions` auto-configured
-- **Multi-stage Docker build** for smaller images
-- **Node.js 22** and **Python 3.13** with **uv** package manager
-- **Modern CLI tools**: ripgrep, fd, tmux, fzf
-- **Session persistence**: command history, GitHub CLI auth, Claude config survive rebuilds
-- **Network tools**: iptables, ipset for security testing
+Running Claude with `bypassPermissions` on your host machine is risky—it can execute any command without confirmation. This devcontainer provides **filesystem isolation** so you get the productivity benefits of unrestricted Claude without risking your host system.
+
+**Designed for:**
+
+- **Security audits**: Review client code without risking your host
+- **Untrusted repositories**: Explore unknown codebases safely
+- **Experimental work**: Let Claude modify code freely in isolation
+- **Multi-repo engagements**: Work on multiple related repositories
 
 ## Prerequisites
 
@@ -51,7 +53,13 @@ Verify with `colima status` - should show "macOS Virtualization.Framework" and "
 
 ## Quick Start
 
-### Option 1: VS Code / Cursor
+Choose the pattern that fits your workflow:
+
+### Pattern A: Per-Project Container (Isolated)
+
+Each project gets its own container with independent volumes. Best for one-off reviews, untrusted repos, or when you need isolation between projects.
+
+**VS Code / Cursor:**
 
 1. Install the Dev Containers extension:
    - VS Code: `ms-vscode-remote.remote-containers`
@@ -60,43 +68,49 @@ Verify with `colima status` - should show "macOS Virtualization.Framework" and "
 2. Clone this repo into your project's `.devcontainer/` folder:
 
    ```bash
-   cd ~/path/to/your/project
+   git clone <untrusted-repo>
+   cd untrusted-repo
    git clone https://github.com/trailofbits/claude-code-devcontainer .devcontainer/
    ```
 
-3. Open **your project folder** (not `.devcontainer/`) in VS Code, then reopen in the container:
+3. Open **your project folder** in VS Code, then:
    - Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
    - Type "Reopen in Container" and select **Dev Containers: Reopen in Container**
 
-### Option 2: Terminal (without VS Code)
+**Terminal (without VS Code):**
 
-1. Install the devcontainer CLI:
+```bash
+# Install devcontainer CLI if needed
+npm install -g @devcontainers/cli
 
-   ```bash
-   npm install -g @devcontainers/cli
-   ```
+# Install the devc helper (one-time)
+git clone https://github.com/trailofbits/claude-code-devcontainer ~/.claude-devcontainer
+~/.claude-devcontainer/install.sh self-install
 
-2. Clone this repo:
+# Clone untrusted repo and start container
+git clone <untrusted-repo>
+cd untrusted-repo
+devc .          # Installs template + starts container
+devc shell      # Opens shell in container
+```
 
-   ```bash
-   git clone https://github.com/trailofbits/claude-code-devcontainer ~/.claude-devcontainer
-   ```
+### Pattern B: Shared Workspace Container (Grouped)
 
-3. Install the `devc` helper:
+A parent directory contains the devcontainer config, and you clone multiple repos inside. Shared volumes across all repos. Best for client engagements, related repositories, or ongoing work.
 
-   ```bash
-   ~/.claude-devcontainer/install.sh self-install
-   ```
+```bash
+# Create workspace for a client engagement
+mkdir -p ~/sandbox/client-name
+cd ~/sandbox/client-name
+devc .                        # Install template + start
 
-4. Use `devc` to manage containers:
-
-   ```bash
-   devc template ~/my-project  # Copy template to project
-   cd ~/my-project
-   devc up                     # Start container
-   devc shell                  # Open shell
-   devc rebuild                # Rebuild (preserves auth)
-   ```
+devc shell
+# Inside container:
+git clone <client-repo-1>
+git clone <client-repo-2>
+cd client-repo-1
+claude                        # Ready to work
+```
 
 ## CLI Helper Commands
 
@@ -110,7 +124,55 @@ devc template DIR   Copy devcontainer files to directory
 devc self-install   Install devc to ~/.local/bin
 ```
 
-## Container Details
+## Network Isolation
+
+By default, containers have full outbound network access. For stricter security, use iptables to restrict network access.
+
+### When to Enable Network Isolation
+
+- Reviewing code that may contain malicious dependencies
+- Auditing software with telemetry or phone-home behavior
+- Maximum isolation for highly sensitive reviews
+
+### Example: Claude + GitHub + Package Registries
+
+```bash
+sudo iptables -A OUTPUT -d api.anthropic.com -j ACCEPT
+sudo iptables -A OUTPUT -d github.com -j ACCEPT
+sudo iptables -A OUTPUT -d raw.githubusercontent.com -j ACCEPT
+sudo iptables -A OUTPUT -d registry.npmjs.org -j ACCEPT
+sudo iptables -A OUTPUT -d pypi.org -j ACCEPT
+sudo iptables -A OUTPUT -d files.pythonhosted.org -j ACCEPT
+sudo iptables -A OUTPUT -o lo -j ACCEPT
+sudo iptables -A OUTPUT -j DROP
+```
+
+### Trade-offs
+
+- Blocks package managers unless you allowlist registries
+- May break tools that require network access
+- DNS resolution still works (consider blocking if paranoid)
+
+## Security Model
+
+This devcontainer provides **filesystem isolation** but not complete sandboxing.
+
+**Sandboxed:** Filesystem (host files inaccessible), processes (isolated from host), package installations (stay in container)
+
+**Not sandboxed:** Network (full outbound by default—see [Network Isolation](#network-isolation)), git identity (`~/.gitconfig` mounted read-only), Docker socket (not mounted by default)
+
+### The `bypassPermissions` Setting
+
+This container auto-configures Claude Code with `bypassPermissions` mode, which:
+
+- Allows Claude to run commands without confirmation prompts
+- Is appropriate here because the container itself is the sandbox
+- Would be risky on a host machine but is safe in this isolated environment
+
+<details>
+<summary><strong>Reference</strong></summary>
+
+### Container Details
 
 | Feature | Value |
 |---------|-------|
@@ -123,20 +185,11 @@ devc self-install   Install devc to ~/.local/bin
 
 ### Included Tools
 
-**Modern CLI:**
-- `rg` (ripgrep) - Fast grep replacement
-- `fd` (fdfind) - Fast find replacement
-- `tmux` - Terminal multiplexer (200k history)
-- `fzf` - Fuzzy finder
-- `delta` - Better git diffs
+**Modern CLI:** `rg` (ripgrep), `fd` (fdfind), `tmux` (200k history), `fzf`, `delta`
 
-**Network/Security:**
-- `iptables`, `ipset` - Firewall tools
-- `iproute2`, `dnsutils` - Network diagnostics
+**Network/Security:** `iptables`, `ipset`, `iproute2`, `dnsutils`
 
-## Persistent Volumes
-
-The following data persists across container rebuilds:
+### Persistent Volumes
 
 | Volume | Path | Purpose |
 |--------|------|---------|
@@ -146,61 +199,20 @@ The following data persists across container rebuilds:
 
 Your host `~/.gitconfig` is mounted read-only for git identity.
 
-## Security Model
+### Auto-Configuration
 
-This devcontainer provides **filesystem isolation** but not complete sandboxing.
+On container creation, `post_install.py` automatically sets `bypassPermissions` mode, creates tmux config with 200k scrollback, sets up git-delta as default pager, fixes volume ownership, and creates global gitignore.
 
-### What IS sandboxed
-
-- **Filesystem**: Container has its own filesystem; your host files outside the mounted workspace are inaccessible
-- **Processes**: Container processes are isolated from host processes
-- **Package installations**: npm/pip installs stay in the container
-
-### What is NOT sandboxed
-
-- **Network**: Full outbound network access (can make API calls, download packages, etc.)
-- **Git identity**: Your `~/.gitconfig` is mounted read-only
-- **Docker socket**: Not mounted by default, but can be added if needed
-
-### The `bypassPermissions` setting
-
-This container auto-configures Claude Code with `bypassPermissions` mode, which:
-
-- Allows Claude to run commands without confirmation prompts
-- Is appropriate here because the container itself is the sandbox
-- Would be risky on a host machine but is safe in this isolated environment
-
-### Network isolation (optional)
-
-For stricter security, you can enable network restrictions using the included iptables tools:
-
-```bash
-# Example: Block all outbound except specific hosts
-sudo iptables -A OUTPUT -d api.anthropic.com -j ACCEPT
-sudo iptables -A OUTPUT -d github.com -j ACCEPT
-sudo iptables -A OUTPUT -j DROP
-```
-
-## Auto-Configuration
-
-On container creation, `post_install.py` automatically:
-
-1. Sets Claude to `bypassPermissions` mode
-2. Creates tmux config with 200k scrollback
-3. Sets up git-delta as default pager
-4. Fixes volume ownership
-5. Creates global gitignore with common patterns
-
-## Verification
+### Verification
 
 ```bash
 claude --version          # Check Claude CLI version
 cat ~/.claude/settings.json  # Verify bypassPermissions
 python3 --version         # Python 3.13
 rg --version              # ripgrep
-fd --version              # fd-find
-tmux -V                   # tmux
 ```
+
+</details>
 
 ## Troubleshooting
 
