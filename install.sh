@@ -34,7 +34,7 @@ Commands:
     self-install        Install 'devc' command to ~/.local/bin
     update              Update devc to the latest version
     template [dir]      Copy devcontainer template to directory (default: current)
-    exec [--] <cmd>     Execute a command in the running container
+    exec <cmd>          Execute a command in the running container
     upgrade             Upgrade Claude Code to latest version
     mount <host> <cont> Add a mount to the devcontainer (recreates container)
     help                Show this help message
@@ -46,7 +46,7 @@ Examples:
     devc shell                  # Open interactive shell
     devc self-install           # Install devc to PATH
     devc update                 # Update to latest version
-    devc exec -- ls -la         # Run command in container
+    devc exec ls -la            # Run command in container
     devc upgrade                # Upgrade Claude Code to latest
     devc mount ~/data /data     # Add mount to container
 EOF
@@ -90,39 +90,23 @@ extract_mounts_to_file() {
 
   temp_file=$(mktemp)
 
-  python3 - "$devcontainer_json" "$temp_file" <<'PYTHON'
-import json
-import sys
+  # Filter out default mounts (template mounts we don't want to preserve)
+  local custom_mounts
+  custom_mounts=$(jq -c '
+    .mounts // [] | map(
+      select(
+        (startswith("source=claude-code-bashhistory-") | not) and
+        (startswith("source=claude-code-config-") | not) and
+        (startswith("source=claude-code-gh-") | not) and
+        (startswith("source=${localEnv:HOME}/.gitconfig,") | not)
+      )
+    ) | if length > 0 then . else empty end
+  ' "$devcontainer_json" 2>/dev/null) || true
 
-devcontainer_json = sys.argv[1]
-temp_file = sys.argv[2]
-
-# Default mounts from the template (these should not be preserved as "custom")
-DEFAULT_MOUNT_PREFIXES = [
-    "source=claude-code-bashhistory-",
-    "source=claude-code-config-",
-    "source=claude-code-gh-",
-    "source=${localEnv:HOME}/.gitconfig,",
-]
-
-with open(devcontainer_json) as f:
-    config = json.load(f)
-
-mounts = config.get("mounts", [])
-custom_mounts = []
-
-for mount in mounts:
-    is_default = any(mount.startswith(prefix) for prefix in DEFAULT_MOUNT_PREFIXES)
-    if not is_default:
-        custom_mounts.append(mount)
-
-if custom_mounts:
-    with open(temp_file, "w") as f:
-        json.dump(custom_mounts, f)
-    print(temp_file)
-else:
-    print("")
-PYTHON
+  if [[ -n "$custom_mounts" ]]; then
+    echo "$custom_mounts" >"$temp_file"
+    echo "$temp_file"
+  fi
 }
 
 # Merge preserved mounts back into devcontainer.json
@@ -133,32 +117,15 @@ merge_mounts_from_file() {
   [[ -f "$mounts_file" ]] || return 0
   [[ -s "$mounts_file" ]] || return 0
 
-  python3 - "$devcontainer_json" "$mounts_file" <<'PYTHON'
-import json
-import sys
+  local custom_mounts
+  custom_mounts=$(cat "$mounts_file")
 
-devcontainer_json = sys.argv[1]
-mounts_file = sys.argv[2]
+  local updated
+  updated=$(jq --argjson custom "$custom_mounts" '
+    .mounts = ((.mounts // []) + $custom | unique)
+  ' "$devcontainer_json")
 
-with open(devcontainer_json) as f:
-    config = json.load(f)
-
-with open(mounts_file) as f:
-    custom_mounts = json.load(f)
-
-existing_mounts = config.get("mounts", [])
-
-# Add custom mounts that aren't already present
-for mount in custom_mounts:
-    if mount not in existing_mounts:
-        existing_mounts.append(mount)
-
-config["mounts"] = existing_mounts
-
-with open(devcontainer_json, "w") as f:
-    json.dump(config, f, indent=2)
-    f.write("\n")
-PYTHON
+  echo "$updated" >"$devcontainer_json"
 }
 
 # Add or update a mount in devcontainer.json
@@ -168,35 +135,18 @@ update_devcontainer_mounts() {
   local container_path="$3"
   local readonly="${4:-false}"
 
-  python3 - "$devcontainer_json" "$host_path" "$container_path" "$readonly" <<'PYTHON'
-import json
-import sys
+  local mount_str="source=${host_path},target=${container_path},type=bind"
+  [[ "$readonly" == "true" ]] && mount_str="${mount_str},readonly"
 
-devcontainer_json = sys.argv[1]
-host_path = sys.argv[2]
-container_path = sys.argv[3]
-readonly = sys.argv[4] == "true"
+  local updated
+  updated=$(jq --arg target "$container_path" --arg mount "$mount_str" '
+    .mounts = (
+      ((.mounts // []) | map(select(contains("target=" + $target + ",") or endswith("target=" + $target) | not)))
+      + [$mount]
+    )
+  ' "$devcontainer_json")
 
-with open(devcontainer_json) as f:
-    config = json.load(f)
-
-mounts = config.get("mounts", [])
-
-# Build the new mount string
-mount_str = f"source={host_path},target={container_path},type=bind"
-if readonly:
-    mount_str += ",readonly"
-
-# Remove any existing mount with the same target
-mounts = [m for m in mounts if f"target={container_path}," not in m and not m.endswith(f"target={container_path}")]
-
-mounts.append(mount_str)
-config["mounts"] = mounts
-
-with open(devcontainer_json, "w") as f:
-    json.dump(config, f, indent=2)
-    f.write("\n")
-PYTHON
+  echo "$updated" >"$devcontainer_json"
 }
 
 cmd_template() {
@@ -310,8 +260,7 @@ cmd_upgrade() {
   check_devcontainer_cli
   log_info "Upgrading Claude Code..."
 
-  devcontainer exec --workspace-folder "$workspace_folder" \
-    npm install -g @anthropic-ai/claude-code@latest
+  devcontainer exec --workspace-folder "$workspace_folder" claude update
 
   log_success "Claude Code upgraded"
 }
