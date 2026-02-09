@@ -98,7 +98,8 @@ extract_mounts_to_file() {
         (startswith("source=claude-code-bashhistory-") | not) and
         (startswith("source=claude-code-config-") | not) and
         (startswith("source=claude-code-gh-") | not) and
-        (startswith("source=${localEnv:HOME}/.gitconfig,") | not)
+        (startswith("source=${localEnv:HOME}/.gitconfig,") | not) and
+        (contains("target=/workspace/.devcontainer,") | not)
       )
     ) | if length > 0 then . else empty end
   ' "$devcontainer_json" 2>/dev/null) || true
