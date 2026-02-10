@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Zsh configuration for Claude Code devcontainer
 
 # Add Claude Code to PATH

@@ -109,7 +109,7 @@ extract_mounts_to_file() {
 
   temp_file=$(mktemp)
 
-  # Filter out default mounts (template mounts we don't want to preserve)
+  # Filter out default mounts by target path (immune to project name changes)
   local custom_mounts
   custom_mounts=$(jq -c '
     .mounts // [] | map(
@@ -248,8 +248,9 @@ cmd_down() {
   log_info "Stopping devcontainer..."
 
   # Get container ID and stop it
+  local label="devcontainer.local_folder=$workspace_folder"
   local container_id
-  container_id=$(docker ps -q --filter "label=devcontainer.local_folder=$workspace_folder" 2>/dev/null || true)
+  container_id=$(docker ps -q --filter "label=$label" 2>/dev/null || true)
 
   if [[ -n "$container_id" ]]; then
     docker stop "$container_id"
