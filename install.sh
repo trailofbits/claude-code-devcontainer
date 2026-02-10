@@ -82,6 +82,12 @@ get_workspace_folder() {
 
 # Extract custom mounts from devcontainer.json to a temp file
 # Returns the temp file path, or empty string if no custom mounts
+#
+# Security: .devcontainer/ is mounted read-only inside the container to prevent
+# a compromised process from injecting malicious mounts or commands into
+# devcontainer.json that execute on the host during rebuild. This protection
+# requires that SYS_ADMIN is never added to runArgs (it would allow remounting
+# read-write).
 extract_mounts_to_file() {
   local devcontainer_json="$1"
   local temp_file
@@ -98,7 +104,9 @@ extract_mounts_to_file() {
         (startswith("source=claude-code-bashhistory-") | not) and
         (startswith("source=claude-code-config-") | not) and
         (startswith("source=claude-code-gh-") | not) and
-        (startswith("source=${localEnv:HOME}/.gitconfig,") | not)
+        (startswith("source=${localEnv:HOME}/.gitconfig,") | not) and
+        # Security: read-only .devcontainer mount prevents container escape on rebuild
+        (startswith("source=${localWorkspaceFolder}/.devcontainer,") | not)
       )
     ) | if length > 0 then . else empty end
   ' "$devcontainer_json" 2>/dev/null) || true
