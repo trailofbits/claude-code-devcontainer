@@ -76,6 +76,19 @@ check_devcontainer_cli() {
   fi
 }
 
+check_no_sys_admin() {
+  local workspace="${1:-.}"
+  local dc_json="$workspace/.devcontainer/devcontainer.json"
+  [[ -f "$dc_json" ]] || return 0
+  if jq -e \
+    '.runArgs[]? | select(test("SYS_ADMIN"))' \
+    "$dc_json" >/dev/null 2>&1; then
+    log_error "SYS_ADMIN capability detected in runArgs."
+    log_error "This defeats the read-only .devcontainer mount."
+    exit 1
+  fi
+}
+
 get_workspace_folder() {
   echo "${1:-$(pwd)}"
 }
@@ -101,12 +114,11 @@ extract_mounts_to_file() {
   custom_mounts=$(jq -c '
     .mounts // [] | map(
       select(
-        (startswith("source=claude-code-bashhistory-") | not) and
-        (startswith("source=claude-code-config-") | not) and
-        (startswith("source=claude-code-gh-") | not) and
-        (startswith("source=${localEnv:HOME}/.gitconfig,") | not) and
-        # Security: read-only .devcontainer mount prevents container escape on rebuild
-        (startswith("source=${localWorkspaceFolder}/.devcontainer,") | not)
+        (contains("target=/commandhistory,") | not) and
+        (contains("target=/home/vscode/.claude,") | not) and
+        (contains("target=/home/vscode/.config/gh,") | not) and
+        (contains("target=/home/vscode/.gitconfig,") | not) and
+        (contains("target=/workspace/.devcontainer,") | not)
       )
     ) | if length > 0 then . else empty end
   ' "$devcontainer_json" 2>/dev/null) || true
@@ -114,6 +126,8 @@ extract_mounts_to_file() {
   if [[ -n "$custom_mounts" ]]; then
     echo "$custom_mounts" >"$temp_file"
     echo "$temp_file"
+  else
+    rm -f "$temp_file"
   fi
 }
 
@@ -207,6 +221,7 @@ cmd_up() {
   workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
+  check_no_sys_admin "$workspace_folder"
   log_info "Starting devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder"
@@ -218,6 +233,7 @@ cmd_rebuild() {
   workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
+  check_no_sys_admin "$workspace_folder"
   log_info "Rebuilding devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container

@@ -1,6 +1,8 @@
 # Claude Code Devcontainer
 # Based on Microsoft devcontainer image for better devcontainer integration
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+ARG UV_VERSION=0.10.0
+FROM ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:78a7ff97cd27b7124a5f3c2aefe146170793c56a1e03321dd31a289f6d82a04f AS uv
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae
 
 ARG TZ
 ENV TZ="$TZ"
@@ -13,9 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   bubblewrap \
   socat \
   # Modern CLI tools
-  fzf \
-  ripgrep \
   fd-find \
+  ripgrep \
   tmux \
   zsh \
   # Build tools
@@ -23,13 +24,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   # Utilities
   jq \
   nano \
-  vim \
   unzip \
+  vim \
   # Network tools (for security testing)
-  iptables \
-  ipset \
-  iproute2 \
   dnsutils \
+  ipset \
+  iptables \
+  iproute2 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install git-delta
@@ -40,7 +41,17 @@ RUN ARCH=$(dpkg --print-architecture) && \
   rm /tmp/git-delta.deb
 
 # Install uv (Python package manager) via multi-stage copy
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=uv /uv /usr/local/bin/uv
+
+# Install fzf from GitHub releases (newer than apt, includes built-in shell integration)
+ARG FZF_VERSION=0.67.0
+RUN ARCH=$(dpkg --print-architecture) && \
+  case "${ARCH}" in \
+    amd64) FZF_ARCH="linux_amd64" ;; \
+    arm64) FZF_ARCH="linux_arm64" ;; \
+    *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
+  esac && \
+  curl -fsSL "https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-${FZF_ARCH}.tar.gz" | tar -xz -C /usr/local/bin
 
 # Create directories and set ownership (combined for fewer layers)
 RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /opt && \
@@ -87,12 +98,6 @@ ARG ZSH_IN_DOCKER_VERSION=1.2.1
 RUN sh -c "$(curl -fsSL https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
   -p git \
   -x
-
-# Download fzf shell integration (Ubuntu 24.04 package doesn't include these)
-ARG FZF_VERSION=0.44.1
-RUN mkdir -p /home/vscode/.fzf && \
-  curl -fsSL "https://raw.githubusercontent.com/junegunn/fzf/${FZF_VERSION}/shell/key-bindings.zsh" -o /home/vscode/.fzf/key-bindings.zsh && \
-  curl -fsSL "https://raw.githubusercontent.com/junegunn/fzf/${FZF_VERSION}/shell/completion.zsh" -o /home/vscode/.fzf/completion.zsh
 
 # Copy zsh configuration
 COPY --chown=vscode:vscode .zshrc /home/vscode/.zshrc.custom

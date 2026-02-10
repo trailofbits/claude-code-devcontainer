@@ -10,8 +10,7 @@
     }
   },
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/tailscale/codespace/tailscale:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "runArgs": [
     "--cap-add=NET_ADMIN",
