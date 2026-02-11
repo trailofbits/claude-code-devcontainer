@@ -122,9 +122,33 @@ devc up             Start the devcontainer
 devc rebuild        Rebuild container (preserves persistent volumes)
 devc down           Stop the container
 devc shell          Open zsh shell in container
+devc exec CMD       Execute command inside the container
+devc upgrade        Upgrade Claude Code in the container
+devc mount SRC DST  Add a bind mount (host → container)
 devc template DIR   Copy devcontainer files to directory
 devc self-install   Install devc to ~/.local/bin
 ```
+
+## File Sharing
+
+### VS Code / Cursor
+
+Drag files from your host into the VS Code Explorer panel — they are copied into `/workspace/` automatically. No configuration needed.
+
+### Terminal: `devc mount`
+
+To make a host directory available inside the container:
+
+```bash
+devc mount ~/drop /drop           # Read-write
+devc mount ~/secrets /secrets --readonly
+```
+
+This adds a bind mount to `devcontainer.json` and recreates the container. Existing mounts are preserved across `devc template` updates.
+
+**Tip:** A shared "drop folder" is useful for passing files in without mounting your entire home directory.
+
+> **Security note:** Avoid mounting large host directories (e.g., `$HOME`). Every mounted path is writable from inside the container unless `--readonly` is specified, which undermines the filesystem isolation this project provides.
 
 ## Network Isolation
 
@@ -172,7 +196,8 @@ The container auto-configures `bypassPermissions` mode—Claude runs commands wi
 | Base | Ubuntu 24.04, Node.js 22, Python 3.13 + uv, zsh |
 | User | `vscode` (passwordless sudo), working dir `/workspace` |
 | Tools | `rg`, `fd`, `tmux`, `fzf`, `delta`, `iptables`, `ipset` |
-| Volumes (survive rebuilds) | Command history, Claude config, GitHub CLI auth |
+| Volumes (survive rebuilds) | Command history (`/commandhistory`), Claude config (`~/.claude`), GitHub CLI auth (`~/.config/gh`) |
+| Host mounts | `~/.gitconfig` (read-only), `.devcontainer/` (read-only) |
 | Auto-configured | [anthropics](https://github.com/anthropics/claude-code-plugins) + [trailofbits](https://github.com/trailofbits/claude-code-plugins) skills, git-delta |
 
 Volumes are stored outside the container, so your shell history, Claude settings, and `gh` login persist even after `devc rebuild`. Host `~/.gitconfig` is mounted read-only for git identity.
