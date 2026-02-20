@@ -199,6 +199,9 @@ node_modules/
 
 [diff]
     colorMoved = default
+
+[gpg "ssh"]
+    program = /usr/bin/ssh-keygen
 """
     local_gitconfig.write_text(local_config, encoding="utf-8")
     print(f"[post_install] Local git config created: {local_gitconfig}", file=sys.stderr)
