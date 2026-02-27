@@ -37,6 +37,7 @@ Commands:
     exec <cmd>          Execute a command in the running container
     upgrade             Upgrade Claude Code to latest version
     mount <host> <cont> Add a mount to the devcontainer (recreates container)
+    sync [project]      Sync Claude Code sessions from devcontainers to host
     help                Show this help message
 
 Examples:
@@ -49,6 +50,8 @@ Examples:
     devc exec ls -la            # Run command in container
     devc upgrade                # Upgrade Claude Code to latest
     devc mount ~/data /data     # Add mount to container
+    devc sync                   # Sync sessions from all devcontainers
+    devc sync crypto            # Sync only matching devcontainer
 EOF
 }
 
@@ -328,6 +331,207 @@ cmd_mount() {
   log_success "Mount added: $host_path → $container_path"
 }
 
+cmd_sync() {
+  local filter="${1:-}"
+  local host_projects="${HOME}/.claude/projects"
+
+  # Discover all devcontainers (running + stopped) by label.
+  local container_ids
+  container_ids=$(docker ps -a -q \
+    --filter "label=devcontainer.local_folder" 2>/dev/null || true)
+
+  if [[ -z "$container_ids" ]]; then
+    log_error "No devcontainers found (running or stopped)."
+    exit 1
+  fi
+
+  # List discovered devcontainers.
+  log_info "Discovered devcontainers:"
+  local matched_any=false
+  while IFS= read -r cid; do
+    local name folder status
+    name=$(sync_get_project_name "$cid")
+    folder=$(docker inspect --format \
+      '{{index .Config.Labels "devcontainer.local_folder"}}' "$cid")
+    status=$(docker inspect --format '{{.State.Status}}' "$cid")
+
+    if [[ -n "$filter" ]]; then
+      if ! echo "$name" | grep -qi "$filter"; then
+        continue
+      fi
+    fi
+
+    matched_any=true
+    echo "  - ${name} (${status}) ${folder}"
+  done <<< "$container_ids"
+
+  if [[ "$matched_any" == false ]]; then
+    log_error "No devcontainers matching '${filter}'."
+    echo ""
+    echo "Available:"
+    while IFS= read -r cid; do
+      local name status
+      name=$(sync_get_project_name "$cid")
+      status=$(docker inspect --format '{{.State.Status}}' "$cid")
+      echo "  - ${name} (${status})"
+    done <<< "$container_ids"
+    exit 1
+  fi
+
+  echo ""
+
+  # Sync matching containers.
+  while IFS= read -r cid; do
+    local name
+    name=$(sync_get_project_name "$cid")
+
+    if [[ -n "$filter" ]]; then
+      if ! echo "$name" | grep -qi "$filter"; then
+        continue
+      fi
+    fi
+
+    sync_one_container "$cid" "$host_projects"
+    echo ""
+  done <<< "$container_ids"
+
+  log_success "Run '/insights' in Claude Code to include these sessions."
+}
+
+# Extract project name from devcontainer.local_folder label.
+sync_get_project_name() {
+  local folder
+  folder=$(docker inspect --format \
+    '{{index .Config.Labels "devcontainer.local_folder"}}' "$1")
+  basename "$folder"
+}
+
+# Resolve the Claude projects dir inside a container without
+# docker exec (works on stopped containers too).
+# Reads CLAUDE_CONFIG_DIR from container env, falls back to
+# /home/<user>/.claude.
+sync_get_claude_projects_dir() {
+  local cid="$1"
+  local claude_dir
+
+  claude_dir=$(docker inspect --format '{{json .Config.Env}}' "$cid" \
+    | tr ',' '\n' | tr -d '[]"' \
+    | grep '^CLAUDE_CONFIG_DIR=' \
+    | cut -d= -f2- || true)
+
+  if [[ -n "$claude_dir" ]]; then
+    echo "${claude_dir}/projects"
+    return
+  fi
+
+  local user
+  user=$(docker inspect --format '{{.Config.User}}' "$cid")
+  if [[ -z "$user" || "$user" == "root" ]]; then
+    echo "/root/.claude/projects"
+  else
+    echo "/home/${user}/.claude/projects"
+  fi
+}
+
+sync_one_container() {
+  local cid="$1"
+  local host_projects="$2"
+  local project_name status claude_dir folder
+
+  project_name=$(sync_get_project_name "$cid")
+  folder=$(docker inspect --format \
+    '{{index .Config.Labels "devcontainer.local_folder"}}' "$cid")
+  status=$(docker inspect --format '{{.State.Status}}' "$cid")
+  claude_dir=$(sync_get_claude_projects_dir "$cid")
+
+  log_info "=== ${project_name} (${status}) ==="
+  echo "  Host path:  ${folder}"
+  echo "  Container:  ${cid:0:12}"
+
+  # docker cp works on both running and stopped containers.
+  local tmpdir
+  tmpdir=$(mktemp -d)
+
+  if ! docker cp "${cid}:${claude_dir}/." "$tmpdir/" 2>/dev/null; then
+    echo "  No sessions found, skipping."
+    rm -rf "$tmpdir"
+    return 0
+  fi
+
+  local session_count
+  session_count=$(find "$tmpdir" -name '*.jsonl' | wc -l | tr -d ' ')
+
+  if [[ "$session_count" -eq 0 ]]; then
+    echo "  No sessions found, skipping."
+    rm -rf "$tmpdir"
+    return 0
+  fi
+
+  echo "  Sessions:   ${session_count}"
+
+  local total_copied=0
+
+  # Sync each project key subdirectory.
+  for key_path in "$tmpdir"/*/; do
+    [[ ! -d "$key_path" ]] && continue
+    local key dest_key
+    key=$(basename "$key_path")
+
+    if [[ "$key" == "-workspace" ]]; then
+      dest_key="-devcontainer-${project_name}"
+    else
+      dest_key="${key}"
+    fi
+
+    local dest_dir="${host_projects}/${dest_key}"
+    mkdir -p "$dest_dir"
+
+    local copied=0
+    while IFS= read -r -d '' file; do
+      local rel="${file#"$key_path"}"
+      local dest_file="${dest_dir}/${rel}"
+      mkdir -p "$(dirname "$dest_file")"
+
+      if [[ ! -e "$dest_file" ]] \
+          || [[ "$file" -nt "$dest_file" ]]; then
+        cp -p "$file" "$dest_file"
+        copied=$((copied + 1))
+      fi
+    done < <(find "$key_path" -type f -print0)
+
+    if [[ "$copied" -gt 0 ]]; then
+      echo "  Synced ${copied} file(s) -> ${dest_key}"
+    fi
+    total_copied=$((total_copied + copied))
+  done
+
+  # Handle .jsonl files directly in projects/ (no subdirectory).
+  local orphan_copied=0
+  local dest_dir="${host_projects}/-devcontainer-${project_name}"
+  mkdir -p "$dest_dir"
+
+  while IFS= read -r -d '' file; do
+    local name
+    name=$(basename "$file")
+    local dest_file="${dest_dir}/${name}"
+
+    if [[ ! -e "$dest_file" ]] \
+        || [[ "$file" -nt "$dest_file" ]]; then
+      cp -p "$file" "$dest_file"
+      orphan_copied=$((orphan_copied + 1))
+    fi
+  done < <(find "$tmpdir" -maxdepth 1 -name '*.jsonl' -print0)
+
+  if [[ "$orphan_copied" -gt 0 ]]; then
+    echo "  Synced ${orphan_copied} file(s) -> -devcontainer-${project_name}"
+    total_copied=$((total_copied + orphan_copied))
+  fi
+
+  rm -rf "$tmpdir"
+
+  echo "  Total: ${total_copied} file(s) synced."
+}
+
 cmd_self_install() {
   local install_dir="$HOME/.local/bin"
   local install_path="$install_dir/devc"
@@ -414,6 +618,9 @@ main() {
     ;;
   mount)
     cmd_mount "$@"
+    ;;
+  sync)
+    cmd_sync "$@"
     ;;
   self-install)
     cmd_self_install
