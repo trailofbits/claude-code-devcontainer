@@ -37,7 +37,7 @@ Commands:
     exec <cmd>          Execute a command in the running container
     upgrade             Upgrade Claude Code to latest version
     mount <host> <cont> Add a mount to the devcontainer (recreates container)
-    sync [project]      Sync Claude Code sessions from devcontainers to host
+    sync [project] [--trusted]  Sync sessions from devcontainers to host
     cp <cont> <host>    Copy files/directories from container to host
     help                Show this help message
 
@@ -334,8 +334,35 @@ cmd_mount() {
 }
 
 cmd_sync() {
-  local filter="${1:-}"
+  local filter=""
+  local trusted=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --trusted)
+      trusted=true
+      shift
+      ;;
+    *)
+      filter="$1"
+      shift
+      ;;
+    esac
+  done
+
   local host_projects="${HOME}/.claude/projects"
+
+  if [[ "$trusted" == false ]]; then
+    log_warn "This copies files from devcontainers to your host filesystem."
+    log_warn "Only proceed if you trust the container contents."
+    log_info "Use --trusted to skip this prompt."
+    read -p "Continue? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_info "Aborted."
+      exit 0
+    fi
+  fi
 
   # Discover all devcontainers (running + stopped) by label.
   local container_ids
