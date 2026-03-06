@@ -25,6 +25,8 @@ setopt ALWAYS_TO_END
 [[ -f "$HOME/.exports" ]] && source "$HOME/.exports"
 # shellcheck disable=SC1091
 [[ -f "$HOME/.aliases" ]] && source "$HOME/.aliases"
+# Remove Oh My Zsh git plugin alias that conflicts with gwt() function
+unalias gwt 2>/dev/null
 # shellcheck disable=SC1091
 [[ -f "$HOME/.functions" ]] && source "$HOME/.functions"
 
