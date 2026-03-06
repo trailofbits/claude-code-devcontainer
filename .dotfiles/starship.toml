@@ -1,253 +1,121 @@
-"$schema" = 'https://starship.rs/config-schema.json'
+# Starship prompt configuration
+# https://starship.rs/config/
 
 format = """
-[](color_orange)\
-$os\
-$username\
-[](bg:color_yellow fg:color_orange)\
 $directory\
-[](fg:color_yellow bg:color_aqua)\
 $git_branch\
-$git_status\
 $git_state\
+$git_status\
 $git_metrics\
-[](fg:color_aqua bg:color_blue)\
-$c\
-$cpp\
-$rust\
-$golang\
-$nodejs\
+
 $python\
-$package\
-[](fg:color_blue bg:color_muddy_green)\
-$kubernetes\
-$docker_context\
-$conda\
-[](fg:color_muddy_green)\
-$fill\
-[](fg:color_purple)\
-$time\
-[](fg:color_red bg:color_purple)\
-$battery\
-[](fg:color_aqua bg:color_red)\
+$nodejs\
 $cmd_duration\
-[](fg:color_yellow bg:color_aqua)\
 $status\
-[](fg:color_orange bg:color_yellow)\
-$jobs\
-[ ](fg:color_orange)\
-$line_break$env_var_DEVCONTAINER$character"""
-
-add_newline = true
-
-right_format = ""
-
-scan_timeout = 35
-command_timeout = 700
-
-palette = 'gruvbox_dark'
-
-[palettes.gruvbox_dark]
-color_fg0 = '#fbf1c7'
-color_fg1 = '#ebdbb2'
-color_bg0 = '#282828'
-color_bg1 = '#3c3836'
-color_bg2 = '#504945'
-color_bg3 = '#665c54'
-color_bg4 = '#7c6f64'
-color_blue = '#458588'
-color_aqua = '#689d6a'
-color_green = '#98971a'
-color_orange = '#d65d0e'
-color_purple = '#b16286'
-color_red = '#cc241d'
-color_yellow = '#d79921'
-color_bright_red = '#fb4934'
-color_bright_green = '#41FF00'
-color_bright_yellow = '#fabd2f'
-color_bright_blue = '#83a598'
-color_bright_purple = '#d3869b'
-color_bright_aqua = '#8ec07c'
-color_bright_orange = '#fe8019'
-color_light_grey = '#a89984'
-color_muddy_green = '#83a598'
-
-[os]
-disabled = false
-style = "bg:color_orange fg:color_fg0"
-
-[battery]
-disabled = false
-full_symbol = "󰁹"
-charging_symbol = "󰂄"
-discharging_symbol = "󰂃"
-unknown_symbol = "󰁽"
-empty_symbol = "󰂎"
-format = "[[ $symbol ](fg:color_fg0 bg:color_red)]($style)"
-
-[[battery.display]]
-threshold = 100
-style = 'bg:color_purple'
-
-[os.symbols]
-Windows = "󰍲"
-Ubuntu = "󰕈"
-SUSE = ""
-Raspbian = "󰐿"
-Mint = "󰣭"
-Macos = "󰀵"
-Manjaro = ""
-Linux = "󰌽"
-Gentoo = "󰣨"
-Fedora = "󰣛"
-Alpine = ""
-Amazon = ""
-Android = ""
-Arch = "󰣇"
-Artix = "󰣇"
-EndeavourOS = ""
-CentOS = ""
-Debian = "󰣚"
-Redhat = "󱄛"
-RedHatEnterprise = "󱄛"
-Pop = ""
+$fill\
+$kubernetes\
+$line_break\
+$username\
+$time\
+$env_var_DEVCONTAINER\
+$character"""
 
 [username]
+style_user = 'yellow bold'
+style_root = 'red bold'
+format = '[$user]($style)'
+disabled = false
 show_always = true
-style_user = "bg:color_orange fg:color_fg0"
-style_root = "bg:color_orange fg:color_fg0"
-format = '[ $user ]($style)'
+
+[fill]
+symbol = " "
+
+[hostname]
+ssh_only = true
+format = '[$ssh_symbol](bold blue) on [$hostname](bold red) '
+trim_at = '.companyname.com'
+disabled = false
 
 [directory]
-style = "fg:color_fg0 bg:color_yellow"
-format = "[ $path ]($style)"
 truncation_length = 3
-truncation_symbol = " "
 truncate_to_repo = true
-read_only = " "
-read_only_style = "fg:color_fg0 bg:color_yellow"
-
-[directory.substitutions]
-"Documents" = "󰈙 "
-"Downloads" = " "
-"Music" = "󰝚 "
-"Pictures" = " "
-"Developer" = "󰲋 "
-"Code" = "󰲋 "
+#truncation_symbol = '…/'
 
 [git_branch]
 symbol = ""
-style = "bg:color_aqua"
-format = '[[ $symbol $branch ](fg:color_fg0 bg:color_aqua)]($style)'
+#style = "fg:white"
+format = '[[\[$symbol $branch ](fg:white)]($style)'
 truncation_length = 24
 
 [git_status]
-style = "bg:color_aqua"
-format = '[[($all_status$ahead_behind )](fg:color_fg0 bg:color_aqua)]($style)'
+format = '[[($all_status $ahead_behind )](fg:yellow)]($style)'
 
 [git_state]
-style = "bg:color_aqua"
-format = '[[ $state( $progress_current/$progress_total) ](fg:color_fg0 bg:color_aqua)]($style)'
+format = '[[ $state( $progress_current/$progress_total) ]()]($style)'
 
 [git_metrics]
 disabled = false
-added_style = "fg:color_bright_yellow bg:color_aqua"
-deleted_style = "fg:color_bright_orange bg:color_aqua"
-format = '[[+$added]($added_style)/[-$deleted]($deleted_style) ](fg:color_fg0 bg:color_aqua)'
+added_style = "fg:yellow"
+deleted_style = "fg:red"
+format = '[[+$added]($added_style)/[-$deleted]($deleted_style)\] ](fg:white)'
 
-[nodejs]
-symbol = ""
-style = "bg:color_blue"
-format = '[[ $symbol ](fg:color_fg0 bg:color_blue)]($style)'
-
-[c]
-symbol = " "
-style = "bg:color_blue"
-format = '[[ $symbol ](fg:color_fg0 bg:color_blue)]($style)'
-
-[cpp]
-symbol = " "
-style = "bg:color_blue"
-format = '[[ $symbol ](fg:color_fg0 bg:color_blue)]($style)'
-
-[rust]
-symbol = ""
-style = "bg:color_blue"
-format = '[[ $symbol ](fg:color_fg0 bg:color_blue)]($style)'
-
-[golang]
-symbol = "󰟓"
-style = "bg:color_blue"
-format = '[[ $symbol ](fg:color_fg0 bg:color_blue)]($style)'
+[kubernetes]
+symbol = "󱃾"
+disabled = false
+format = '[$symbol $context \($namespace\)]($style)'
+contexts = [
+  { context_pattern = ".*dev.*", style = "green"},
+  { context_pattern = ".*test.*", style = "yellow" },
+  { context_pattern = ".*prod.*", style = "red" },
+]
 
 [python]
 symbol = ""
-style = "bg:color_blue"
-format = '[[ $symbol ](fg:color_fg0 bg:color_blue)]($style)'
+format = '\[[${symbol} ${pyenv_prefix}(${version})(\($virtualenv\))]($style)\] '
+detect_extensions = ["py"]
+detect_files = ["pyproject.toml", "requirements.txt", "setup.py", "Pipfile"]
 
-[package]
-disabled = false
-symbol = "󰏗"
-style = "bg:color_blue"
-format = '[[ $symbol $version ](fg:color_fg0 bg:color_blue)]($style)'
+[nodejs]
+format = '\[[$symbol($version)]($style)\] '
+detect_extensions = ["js", "ts"]
+detect_files = ["package.json"]
 
-[docker_context]
-symbol = ""
-style = "bg:color_muddy_green"
-format = '[[ $symbol( $context) ](fg:#83a598 bg:color_muddy_green)]($style)'
-
-[conda]
-symbol = "󱔎"
-style = "bg:color_muddy_green"
-format = '[[ $symbol( $environment) ](fg:color_fg0 bg:color_muddy_green)]($style)'
-
-[kubernetes]
-disabled = false
-style = "bg:color_muddy_green"
-format = '[[ 󱃾 $context( \($namespace\)) ](fg:color_fg0 bg:color_muddy_green)]($style)'
-detect_files = ["kustomization.yaml", "Chart.yaml", "helmfile.yaml"]
-
-[time]
-disabled = false
-time_format = "%R"
-style = "bg:color_bg1"
-format = '[[ 󰥔 $time ](fg:color_fg0 bg:color_purple)]($style)'
-
-[line_break]
-disabled = false
-
-[character]
-disabled = false
-success_symbol = '[](bold fg:color_bright_green)'
-error_symbol = '[](bold fg:color_bright_red)'
-vimcmd_symbol = '[](bold fg:color_bright_green)'
-vimcmd_replace_one_symbol = '[](bold fg:color_purple)'
-vimcmd_replace_symbol = '[](bold fg:color_purple)'
-vimcmd_visual_symbol = '[](bold fg:color_yellow)'
-
-[status]
-disabled = false
-style = "bg:color_bg4"
-format = '[[ ✖ $status ](fg:color_fg0 bg:color_yellow)]($style)'
-map_symbol = true
-recognize_signal_code = true
+[deno]
+format = '\[[$symbol($version)]($style)\] '
 
 [cmd_duration]
 min_time = 2000
 style = "bg:color_bg3"
 format = '[[  $duration ](fg:color_fg0 bg:color_aqua)]($style)'
 
-[jobs]
-threshold = 1
-symbol = ""
-style = "bg:color_bg1"
-format = '[[ $symbol $number ](fg:color_fg0 bg:color_yellow)]($style)'
+#[status]
+#disabled = false
+#format = '[$symbol$status]($style) '
 
-[fill]
-symbol = " "
+[status]
+disabled = false
+style = "bg:color_bg4"
+format = '[[ ✖ $status ](fg:red)]($style)'
+map_symbol = true
+recognize_signal_code = true
+
+[time]
+disabled = false
+format = ' [$time]($style) '
+time_format = "%H:%M"
 
 [env_var.DEVCONTAINER]
 variable = "DEVCONTAINER"
 format = '[$symbol devc ]($style)'
 symbol = '󰡨'
-style = 'bold color_purple'
+style = 'bold purple'
+
+#[character]
+##success_symbol = "[λ](bold yellow)"
+##error_symbol = "[λ](bold red)"
+#success_symbol = '[](bold fg:bright-green)'
+#error_symbol = '[](bold fg:color_bright_red)'
+#vimcmd_symbol = '[](bold fg:color_bright_green)'
+#vimcmd_replace_one_symbol = '[](bold fg:color_purple)'
+#vimcmd_replace_symbol = '[](bold fg:color_purple)'
+#vimcmd_visual_symbol = '[](bold fg:color_yellow)'
