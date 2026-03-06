@@ -292,7 +292,8 @@ gwt() {
 
   if [[ -n "$existing" ]]; then
     echo "Branch \"${branch}\" already exists."
-    read -rp "Delete it and recreate? [y/N] " confirm
+    printf "Delete it and recreate? [y/N] "
+    read -r confirm
     if [[ "${confirm}" =~ ^[Yy]$ ]]; then
       git branch -D "${branch}"
     else
@@ -310,7 +311,8 @@ gwt() {
 # Git worktree helper: remove a worktree
 gwr() {
   local name="$1"
-  read -rp "Delete worktree ${name}? [y/N] " confirm
+  printf "Delete worktree %s? [y/N] " "$name"
+  read -r confirm
   if [[ "${confirm}" =~ ^[Yy]$ ]]; then
     git worktree remove "$name"
   else

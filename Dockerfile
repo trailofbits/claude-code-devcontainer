@@ -135,7 +135,21 @@ RUN for f in .aliases .exports .functions .vimrc; do \
 
 # Copy shell configurations
 COPY --chown=vscode:vscode .bashrc /home/vscode/.bashrc
+COPY --chown=vscode:vscode .bash_profile /home/vscode/.bash_profile
 COPY --chown=vscode:vscode .zshrc /home/vscode/.zshrc.custom
+
+# Container-specific overrides (appended after dotfiles sourcing in .bashrc)
+RUN cat >> /home/vscode/.bashrc <<'CONTAINER'
+
+# --- Container overrides ---
+export FNM_DIR="$HOME/.fnm"
+export PATH="$FNM_DIR:$PATH"
+eval "$(fnm env --use-on-cd)"
+export HISTFILE=/commandhistory/.bash_history
+export HISTSIZE=200000
+export HISTFILESIZE=200000
+alias sg=ast-grep
+CONTAINER
 
 # Append custom zshrc to the main one
 RUN echo 'source ~/.zshrc.custom' >> /home/vscode/.zshrc

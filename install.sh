@@ -209,6 +209,7 @@ cmd_template() {
   cp "$SCRIPT_DIR/post_install.py" "$devcontainer_dir/"
   cp "$SCRIPT_DIR/.zshrc" "$devcontainer_dir/"
   cp "$SCRIPT_DIR/.bashrc" "$devcontainer_dir/"
+  cp "$SCRIPT_DIR/.bash_profile" "$devcontainer_dir/"
 
   # Always create .dotfiles/ (Dockerfile COPY requires it to exist)
   mkdir -p "$devcontainer_dir/.dotfiles/.claude"
