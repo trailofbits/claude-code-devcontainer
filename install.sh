@@ -38,6 +38,7 @@ Commands:
     upgrade             Upgrade Claude Code to latest version
     mount <host> <cont> Add a mount to the devcontainer (recreates container)
     sync [project]      Sync Claude Code sessions from devcontainers to host
+    cp <cont> <host>    Copy files/directories from container to host
     help                Show this help message
 
 Examples:
@@ -52,6 +53,7 @@ Examples:
     devc mount ~/data /data     # Add mount to container
     devc sync                   # Sync sessions from all devcontainers
     devc sync crypto            # Sync only matching devcontainer
+    devc cp /some/file ./out    # Copy a path from container to host
 EOF
 }
 
@@ -532,6 +534,33 @@ sync_one_container() {
   echo "  Total: ${total_copied} file(s) synced."
 }
 
+cmd_cp() {
+  local container_path="${1:-}"
+  local host_path="${2:-}"
+
+  if [[ -z "$container_path" ]] || [[ -z "$host_path" ]]; then
+    log_error "Usage: devc cp <container_path> <host_path>"
+    exit 1
+  fi
+
+  local workspace_folder
+  workspace_folder="$(get_workspace_folder)"
+
+  # Find the running container
+  local label="devcontainer.local_folder=$workspace_folder"
+  local container_id
+  container_id=$(docker ps -q --filter "label=$label" 2>/dev/null || true)
+
+  if [[ -z "$container_id" ]]; then
+    log_error "No running devcontainer found for $workspace_folder"
+    exit 1
+  fi
+
+  log_info "Copying $container_path → $host_path"
+  docker cp "$container_id:$container_path" "$host_path"
+  log_success "Copied $container_path → $host_path"
+}
+
 cmd_self_install() {
   local install_dir="$HOME/.local/bin"
   local install_path="$install_dir/devc"
@@ -621,6 +650,9 @@ main() {
     ;;
   sync)
     cmd_sync "$@"
+    ;;
+  cp)
+    cmd_cp "$@"
     ;;
   self-install)
     cmd_self_install
