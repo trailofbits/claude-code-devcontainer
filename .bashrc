@@ -38,6 +38,7 @@ fi
 
 # --- Container-only aliases ---
 alias sg=ast-grep
+alias claude-yolo='claude --dangerously-skip-permissions'
 
 # --- fzf configuration ---
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
