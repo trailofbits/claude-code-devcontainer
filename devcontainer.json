@@ -48,7 +48,11 @@
     "source=claude-code-gh-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
     "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly",
     "source=${localWorkspaceFolder}/.devcontainer,target=/workspace/.devcontainer,type=bind,readonly",
-    "source=${localEnv:HOME}/.claude/CLAUDE.md,target=/home/vscode/.claude/CLAUDE.md,type=bind,readonly"
+    "source=${localEnv:HOME}/.claude/CLAUDE.md,target=/home/vscode/.claude/CLAUDE.md,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude/commands,target=/home/vscode/.claude/commands,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude/skills,target=/home/vscode/.claude/skills,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude/rules,target=/home/vscode/.claude/rules,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude/docs,target=/home/vscode/.claude/docs,type=bind,readonly"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
@@ -63,9 +67,12 @@
     "NPM_CONFIG_UPDATE_NOTIFIER": "false",
     "NPM_CONFIG_MINIMUM_RELEASE_AGE": "1440",
     "PYTHONDONTWRITEBYTECODE": "1",
-    "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
+    "EXA_API_KEY": "${localEnv:EXA_API_KEY}"
   },
-  "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\" && mkdir -p \"$HOME/.claude\" && test -f \"$HOME/.claude/CLAUDE.md\" || touch \"$HOME/.claude/CLAUDE.md\"",
+  "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\" && mkdir -p \"$HOME/.claude\" && test -f \"$HOME/.claude/CLAUDE.md\" || touch \"$HOME/.claude/CLAUDE.md\" && mkdir -p \"$HOME/.claude/commands\" \"$HOME/.claude/skills\" \"$HOME/.claude/rules\" \"$HOME/.claude/docs\"",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
   "postCreateCommand": "uv run --no-project /opt/post_install.py"

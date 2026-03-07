@@ -35,6 +35,12 @@ export HISTFILE=/commandhistory/.zsh_history
 export HISTSIZE=200000
 export SAVEHIST=200000
 
+# --- Unset empty credential vars (localEnv sets "" when unset on host) ---
+for _var in ANTHROPIC_API_KEY OPENAI_API_KEY EXA_API_KEY; do
+  [[ -z "${(P)_var}" ]] && unset "$_var"
+done
+unset _var
+
 # --- Container-only aliases ---
 alias sg=ast-grep
 alias claude-yolo='claude --dangerously-skip-permissions'

@@ -130,6 +130,7 @@ RUN for f in .aliases .exports .functions .vimrc; do \
       if [ -f "/tmp/dotfiles/$f" ]; then cp "/tmp/dotfiles/$f" "$HOME/$f"; fi; \
     done && \
     if [ -f /tmp/dotfiles/starship.toml ]; then cp /tmp/dotfiles/starship.toml "$HOME/.config/starship.toml"; fi && \
+    if [ -f /tmp/dotfiles/.claude/settings.json ]; then cp /tmp/dotfiles/.claude/settings.json /opt/dotfiles-claude-settings.json; fi && \
     if [ -f /tmp/dotfiles/.claude/settings.local.json ]; then cp /tmp/dotfiles/.claude/settings.local.json /opt/dotfiles-claude-settings.local.json; fi && \
     rm -rf /tmp/dotfiles
 
@@ -149,6 +150,11 @@ export HISTFILE=/commandhistory/.bash_history
 export HISTSIZE=200000
 export HISTFILESIZE=200000
 alias sg=ast-grep
+# Unset empty credential vars (localEnv sets "" when unset on host)
+for _var in ANTHROPIC_API_KEY OPENAI_API_KEY EXA_API_KEY; do
+  [[ -z "${!_var}" ]] && unset "$_var"
+done
+unset _var
 CONTAINER
 
 # Append custom zshrc to the main one

@@ -121,7 +121,11 @@ extract_mounts_to_file() {
         (contains("target=/home/vscode/.config/gh,") | not) and
         (contains("target=/home/vscode/.gitconfig,") | not) and
         (contains("target=/workspace/.devcontainer,") | not) and
-        (contains("target=/home/vscode/.claude/CLAUDE.md,") | not)
+        (contains("target=/home/vscode/.claude/CLAUDE.md,") | not) and
+        (contains("target=/home/vscode/.claude/commands,") | not) and
+        (contains("target=/home/vscode/.claude/skills,") | not) and
+        (contains("target=/home/vscode/.claude/rules,") | not) and
+        (contains("target=/home/vscode/.claude/docs,") | not)
       )
     ) | if length > 0 then . else empty end
   ' "$devcontainer_json" 2>/dev/null) || true
@@ -219,6 +223,8 @@ cmd_template() {
     for f in .aliases .exports .functions .vimrc starship.toml; do
       [[ -f "$SCRIPT_DIR/.dotfiles/$f" ]] && cp "$SCRIPT_DIR/.dotfiles/$f" "$devcontainer_dir/.dotfiles/"
     done
+    [[ -f "$SCRIPT_DIR/.dotfiles/.claude/settings.json" ]] &&
+      cp "$SCRIPT_DIR/.dotfiles/.claude/settings.json" "$devcontainer_dir/.dotfiles/.claude/"
     [[ -f "$SCRIPT_DIR/.dotfiles/.claude/settings.local.json" ]] &&
       cp "$SCRIPT_DIR/.dotfiles/.claude/settings.local.json" "$devcontainer_dir/.dotfiles/.claude/"
     log_info "Dotfiles copied"

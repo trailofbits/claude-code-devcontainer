@@ -131,6 +131,35 @@ def deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+def setup_claude_settings_from_dotfiles():
+    """Merge dotfiles settings.json into container Claude settings.
+
+    The dotfiles settings are staged at /opt during build because ~/.claude/ is a
+    Docker volume — files baked into the image layer are hidden by the volume mount.
+    This function reads the staged copy and deep-merges it at runtime.
+    """
+    staged = Path("/opt/dotfiles-claude-settings.json")
+    if not staged.exists():
+        return
+
+    override = {}
+    with contextlib.suppress(json.JSONDecodeError):
+        override = json.loads(staged.read_text())
+
+    if not override:
+        return
+
+    settings_file = Path.home() / ".claude" / "settings.json"
+    existing = {}
+    if settings_file.exists():
+        with contextlib.suppress(json.JSONDecodeError):
+            existing = json.loads(settings_file.read_text())
+
+    merged = deep_merge(existing, override)
+    settings_file.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+    print("[post_install] Claude settings merged from dotfiles", file=sys.stderr)
+
+
 def setup_claude_local_settings():
     """Merge dotfiles' settings.local.json into the volume-mounted Claude config.
 
@@ -259,6 +288,7 @@ def main():
     print("[post_install] Starting post-install configuration...", file=sys.stderr)
 
     setup_claude_settings()
+    setup_claude_settings_from_dotfiles()
     setup_claude_local_settings()
     setup_tmux_config()
     fix_directory_ownership()
