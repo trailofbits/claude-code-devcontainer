@@ -42,9 +42,9 @@
   },
   "remoteUser": "vscode",
   "mounts": [
-    "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
-    "source=claude-code-gh-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
+    "source=devc-${localWorkspaceFolderBasename}-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=devc-${localWorkspaceFolderBasename}-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    "source=devc-${localWorkspaceFolderBasename}-gh-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
     "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly",
     "source=${localWorkspaceFolder}/.devcontainer,target=/workspace/.devcontainer,type=bind,readonly"
   ],

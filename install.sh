@@ -38,6 +38,7 @@ Commands:
     upgrade             Upgrade Claude Code to latest version
     mount <host> <cont> Add a mount to the devcontainer (recreates container)
     cp <cont> <host>    Copy files/directories from container to host
+    destroy [-f]        Remove container, volumes, and image for current project
     help                Show this help message
 
 Examples:
@@ -51,6 +52,8 @@ Examples:
     devc upgrade                # Upgrade Claude Code to latest
     devc mount ~/data /data     # Add mount to container
     devc cp /some/file ./out    # Copy a path from container to host
+    devc destroy                # Remove all project Docker resources
+    devc destroy -f             # Skip confirmation prompt
 EOF
 }
 
@@ -408,6 +411,155 @@ cmd_dot() {
   cmd_up "."
 }
 
+# Discovers all Docker resources associated with the current workspace.
+# Sets global variables: CONTAINER_ID, CONTAINER_STATUS, VOLUMES (array), IMAGE, IMAGE_UID
+discover_resources() {
+  local workspace_folder="$1"
+  local label="devcontainer.local_folder=$workspace_folder"
+
+  CONTAINER_ID=""
+  CONTAINER_STATUS=""
+  VOLUMES=()
+  IMAGE=""
+  IMAGE_UID=""
+
+  # Find container (any state: running, stopped, created, etc.)
+  CONTAINER_ID=$(docker ps -aq --filter "label=$label" 2>/dev/null | head -1)
+
+  if [[ -z "$CONTAINER_ID" ]]; then
+    return 0
+  fi
+
+  # Get container status
+  CONTAINER_STATUS=$(docker inspect "$CONTAINER_ID" --format '{{.State.Status}}' 2>/dev/null || true)
+
+  # Get volumes (docker volumes only, not bind mounts)
+  while IFS= read -r vol; do
+    [[ -n "$vol" ]] && VOLUMES+=("$vol")
+  done < <(docker inspect "$CONTAINER_ID" --format '{{json .Mounts}}' 2>/dev/null \
+    | jq -r '.[] | select(.Type == "volume") | .Name' 2>/dev/null)
+
+  # Get image and its -uid variant
+  IMAGE=$(docker inspect "$CONTAINER_ID" --format '{{.Config.Image}}' 2>/dev/null || true)
+  if [[ -n "$IMAGE" ]]; then
+    if [[ "$IMAGE" == *-uid ]]; then
+      IMAGE_UID="$IMAGE"
+      IMAGE="${IMAGE%-uid}"
+    else
+      IMAGE_UID="${IMAGE}-uid"
+    fi
+  fi
+}
+
+print_destroy_summary() {
+  echo ""
+  log_warn "The following resources will be permanently removed:"
+  echo ""
+
+  if [[ -n "$CONTAINER_ID" ]]; then
+    local container_name
+    container_name=$(docker inspect "$CONTAINER_ID" --format '{{.Name}}' 2>/dev/null | sed 's|^/||')
+    echo "  Container:  ${container_name:-$CONTAINER_ID}"
+    if [[ "$CONTAINER_STATUS" == "running" ]]; then
+      echo "              (currently running -- will be force-stopped)"
+    fi
+  fi
+
+  if [[ ${#VOLUMES[@]} -gt 0 ]]; then
+    echo "  Volumes:"
+    for vol in "${VOLUMES[@]}"; do
+      echo "              $vol"
+    done
+  fi
+
+  if [[ -n "$IMAGE" ]]; then
+    echo "  Image:      $IMAGE"
+    if docker image inspect "$IMAGE_UID" &>/dev/null; then
+      echo "              $IMAGE_UID"
+    fi
+  fi
+
+  echo ""
+}
+
+cmd_destroy() {
+  local force=false
+
+  # Parse flags
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f|--force)
+        force=true
+        shift
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  local workspace_folder
+  workspace_folder="$(get_workspace_folder "${1:-}")"
+
+  discover_resources "$workspace_folder"
+
+  # No resources found (idempotent behavior)
+  if [[ -z "$CONTAINER_ID" ]]; then
+    log_info "No devcontainer found for $workspace_folder"
+    return 0
+  fi
+
+  print_destroy_summary
+
+  # Running container warning
+  if [[ "$CONTAINER_STATUS" == "running" && "$force" != true ]]; then
+    log_warn "Container is currently running!"
+    read -p "Force-stop the running container? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_info "Aborted."
+      return 0
+    fi
+  fi
+
+  # Main confirmation prompt
+  if [[ "$force" != true ]]; then
+    read -p "Destroy these resources? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_info "Aborted."
+      return 0
+    fi
+  fi
+
+  # Deletion, in order: stop, remove container, volumes, images
+  if [[ -n "$CONTAINER_ID" && "$CONTAINER_STATUS" == "running" ]]; then
+    log_info "Stopping container..."
+    docker stop "$CONTAINER_ID" >/dev/null 2>&1 || true
+  fi
+
+  if [[ -n "$CONTAINER_ID" ]]; then
+    log_info "Removing container..."
+    docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true
+  fi
+
+  for vol in "${VOLUMES[@]}"; do
+    log_info "Removing volume: $vol"
+    docker volume rm -f "$vol" >/dev/null 2>&1 || true
+  done
+
+  if [[ -n "$IMAGE" ]]; then
+    log_info "Removing image: $IMAGE"
+    docker rmi -f "$IMAGE" >/dev/null 2>&1 || true
+    if docker image inspect "$IMAGE_UID" &>/dev/null 2>&1; then
+      log_info "Removing image: $IMAGE_UID"
+      docker rmi -f "$IMAGE_UID" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  log_success "All resources destroyed for $workspace_folder"
+}
+
 # Main command dispatcher
 main() {
   if [[ $# -eq 0 ]]; then
@@ -430,6 +582,9 @@ main() {
     ;;
   down)
     cmd_down "$@"
+    ;;
+  destroy)
+    cmd_destroy "$@"
     ;;
   shell)
     cmd_shell
