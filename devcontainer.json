@@ -70,7 +70,8 @@
     "PIP_DISABLE_PIP_VERSION_CHECK": "1",
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
-    "EXA_API_KEY": "${localEnv:EXA_API_KEY}"
+    "EXA_API_KEY": "${localEnv:EXA_API_KEY}",
+    "GH_TOKEN": "${localEnv:GH_TOKEN}"
   },
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\" && mkdir -p \"$HOME/.claude\" && test -f \"$HOME/.claude/CLAUDE.md\" || touch \"$HOME/.claude/CLAUDE.md\" && mkdir -p \"$HOME/.claude/commands\" \"$HOME/.claude/skills\" \"$HOME/.claude/rules\" \"$HOME/.claude/docs\"",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",

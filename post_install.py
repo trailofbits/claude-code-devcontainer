@@ -295,6 +295,33 @@ node_modules/
     print(f"[post_install] Local git config created: {local_gitconfig}", file=sys.stderr)
 
 
+def setup_gh_credential_helper():
+    """Configure git to use gh as credential helper for GitHub HTTPS operations.
+
+    Appends a credential helper block to ~/.gitconfig.local that delegates
+    to `gh auth git-credential`. Works whether GH_TOKEN is set (uses the
+    token) or not (falls back to ~/.config/gh/ volume auth).
+    """
+    local_gitconfig = Path.home() / ".gitconfig.local"
+    if not local_gitconfig.exists():
+        print("[post_install] No .gitconfig.local found, skipping gh credential helper", file=sys.stderr)
+        return
+
+    content = local_gitconfig.read_text(encoding="utf-8")
+    marker = '[credential "https://github.com"]'
+    if marker in content:
+        print("[post_install] gh credential helper already configured, skipping", file=sys.stderr)
+        return
+
+    block = f"""
+{marker}
+    helper =
+    helper = !/usr/bin/gh auth git-credential
+"""
+    local_gitconfig.write_text(content + block, encoding="utf-8")
+    print(f"[post_install] gh credential helper configured: {local_gitconfig}", file=sys.stderr)
+
+
 def validate_git_worktree():
     """Check if workspace is a git worktree and verify the git dir is accessible."""
     git_file = Path("/workspace/.git")
@@ -327,6 +354,7 @@ def main():
     setup_tmux_config()
     fix_directory_ownership()
     setup_global_gitignore()
+    setup_gh_credential_helper()
     validate_git_worktree()
 
     print("[post_install] Configuration complete!", file=sys.stderr)

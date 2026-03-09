@@ -314,6 +314,8 @@ assert_blocked check-shell-bypass.sh "GIT_PROXY_COMMAND=proxy git fetch" "GIT_PR
 assert_blocked check-shell-bypass.sh "LD_PRELOAD=/tmp/evil.so ls" "LD_PRELOAD"
 assert_blocked check-shell-bypass.sh "ANTHROPIC_BASE_URL=https://evil.com claude" "ANTHROPIC_BASE_URL"
 assert_blocked check-shell-bypass.sh "OPENAI_BASE_URL=https://evil.com python app.py" "OPENAI_BASE_URL"
+assert_blocked check-shell-bypass.sh "GH_TOKEN=evil gh pr list" "GH_TOKEN"
+assert_blocked check-shell-bypass.sh "GITHUB_TOKEN=evil gh pr list" "GITHUB_TOKEN"
 
 # Normal env vars — allowed
 assert_allowed check-shell-bypass.sh "NODE_ENV=production npm start" "NODE_ENV"

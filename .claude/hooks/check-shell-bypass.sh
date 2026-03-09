@@ -42,3 +42,15 @@ if echo "$CMD" | grep -qE 'OPENAI_BASE_URL='; then
 	echo 'BLOCKED: OPENAI_BASE_URL= can redirect API calls to a malicious server' >&2
 	exit 2
 fi
+
+# GH_TOKEN — block
+if echo "$CMD" | grep -qE 'GH_TOKEN='; then
+	echo 'BLOCKED: GH_TOKEN= override can hijack GitHub authentication' >&2
+	exit 2
+fi
+
+# GITHUB_TOKEN — block
+if echo "$CMD" | grep -qE 'GITHUB_TOKEN='; then
+	echo 'BLOCKED: GITHUB_TOKEN= override can hijack GitHub authentication' >&2
+	exit 2
+fi
