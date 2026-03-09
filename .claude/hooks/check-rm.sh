@@ -6,7 +6,7 @@ set -euo pipefail
 
 CMD=$(jq -r '.tool_input.command' | head -1)
 
-if echo "$CMD" | grep -qE 'rm[[:space:]]+-[^[:space:]]*r[^[:space:]]*f'; then
+if echo "$CMD" | grep -qE 'rm[[:space:]]+-[^[:space:]]*(rf|fr)'; then
 	echo 'BLOCKED: Use trash instead of rm -rf' >&2
 	exit 2
 fi
