@@ -15,12 +15,28 @@
 				"matcher": "Bash",
 				"hooks": [
 					{ "type": "command", "command": ".claude/hooks/check-rm.sh" },
-					{ "type": "command", "command": ".claude/hooks/check-git-push.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-git-destructive.sh" },
 					{ "type": "command", "command": ".claude/hooks/check-gh.sh" },
 					{ "type": "command", "command": ".claude/hooks/check-publish.sh" },
-					{ "type": "command", "command": ".claude/hooks/check-docker-push.sh" }
+					{ "type": "command", "command": ".claude/hooks/check-docker.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-database.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-iac.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-network-exfil.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-shell-bypass.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-cloud-cli.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-deploy.sh" }
 				]
 			}
+		]
+	},
+	"permissions": {
+		"deny": [
+			"Edit(.claude/settings.json)",
+			"Write(.claude/settings.json)",
+			"Edit(.claude/settings.local.json)",
+			"Write(.claude/settings.local.json)",
+			"Edit(.claude/hooks/**)",
+			"Write(.claude/hooks/**)"
 		]
 	},
 	"enabledMcpsonServers": [
