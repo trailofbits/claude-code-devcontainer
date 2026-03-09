@@ -14,26 +14,11 @@
 			{
 				"matcher": "Bash",
 				"hooks": [
-					{
-						"type": "command",
-						"command": "CMD=$(jq -r '.tool_input.command' | head -1); if echo \"$CMD\" | grep -qE 'rm[[:space:]]+-[^[:space:]]*r[^[:space:]]*f'; then echo 'BLOCKED: Use trash instead of rm -rf' >&2; exit 2; fi"
-					},
-					{
-						"type": "command",
-						"command": "CMD=$(jq -r '.tool_input.command' | head -1); if echo \"$CMD\" | grep -qE 'git[[:space:]]+push.*(main|master)'; then echo 'BLOCKED: Use feature branches, not direct push to main' >&2; exit 2; fi"
-					},
-					{
-						"type": "command",
-						"command": "CMD=$(jq -r '.tool_input.command' | head -1); echo \"$CMD\" | grep -qE 'gh[[:space:]]' || exit 0; echo \"$CMD\" | grep -qE 'gh[[:space:]]+(pr[[:space:]]+(create|edit|view|list|diff|checks|comment|ready|status)|issue[[:space:]]+(view|list|create|comment)|repo[[:space:]]+view)' && exit 0; if echo \"$CMD\" | grep -qE 'gh[[:space:]]+api'; then echo \"$CMD\" | grep -qE '(-X|--method)[[:space:]]*(DELETE|PUT|PATCH|POST)' && { echo 'BLOCKED: Destructive gh api methods not allowed' >&2; exit 2; }; exit 0; fi; echo 'BLOCKED: Only gh pr (create|edit|view|list|diff|checks|comment|ready|status) and gh issue (view|list|create|comment) allowed. Other operations must be done manually on GitHub.' >&2; exit 2"
-					},
-					{
-						"type": "command",
-						"command": "CMD=$(jq -r '.tool_input.command' | head -1); if echo \"$CMD\" | grep -qE '(npm|pnpm|yarn)[[:space:]]+publish'; then echo 'BLOCKED: Package publishing must be done manually' >&2; exit 2; fi"
-					},
-					{
-						"type": "command",
-						"command": "CMD=$(jq -r '.tool_input.command' | head -1); if echo \"$CMD\" | grep -qE 'docker[[:space:]]+push'; then echo 'BLOCKED: Docker image pushing must be done manually' >&2; exit 2; fi"
-					}
+					{ "type": "command", "command": ".claude/hooks/check-rm.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-git-push.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-gh.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-publish.sh" },
+					{ "type": "command", "command": ".claude/hooks/check-docker-push.sh" }
 				]
 			}
 		]
