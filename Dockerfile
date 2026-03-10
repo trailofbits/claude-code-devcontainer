@@ -135,6 +135,11 @@ RUN for f in .aliases .exports .functions .vimrc; do \
     if [ -f /tmp/dotfiles/.claude/settings.local.json ]; then cp /tmp/dotfiles/.claude/settings.local.json /opt/dotfiles-claude-settings.local.json; fi && \
     rm -rf /tmp/dotfiles
 
+# Pre-install vim-plug and plugins so vim starts clean without network calls
+RUN curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+      https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim && \
+    vim -es -u "$HOME/.vimrc" +PlugInstall +qall 2>/dev/null || true
+
 # Copy shell configurations
 COPY --chown=vscode:vscode .bashrc /home/vscode/.bashrc
 COPY --chown=vscode:vscode .bash_profile /home/vscode/.bash_profile
@@ -151,8 +156,12 @@ export HISTFILE=/commandhistory/.bash_history
 export HISTSIZE=200000
 export HISTFILESIZE=200000
 alias sg=ast-grep
+# Fall back to xterm-256color if host TERM has no terminfo entry
+if ! infocmp "$TERM" &>/dev/null; then
+  export TERM=xterm-256color
+fi
 # Unset empty credential vars (localEnv sets "" when unset on host)
-for _var in ANTHROPIC_API_KEY OPENAI_API_KEY EXA_API_KEY; do
+for _var in ANTHROPIC_API_KEY OPENAI_API_KEY EXA_API_KEY GH_TOKEN; do
   [[ -z "${!_var}" ]] && unset "$_var"
 done
 unset _var

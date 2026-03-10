@@ -192,11 +192,13 @@ API keys set on the host are automatically forwarded into the container:
 | `EXA_API_KEY` | Exa AI search |
 | `GH_TOKEN` | GitHub CLI and git HTTPS (see [GitHub Authentication](#github-authentication)) |
 
-Set them in your host shell profile (e.g., `~/.bashrc`, `~/.zshrc`) or export before starting the container:
+Add them to your host shell profile (e.g., `~/.bashrc`, `~/.zshrc`) so they persist across sessions. Environment variables are read from the host at **container creation time** — if you add or change a key, rebuild the container to pick it up:
 
 ```bash
+# First time or after changing a key
 export ANTHROPIC_API_KEY=sk-ant-...
-devc up
+devc rebuild                        # re-creates container with new env
+devc shell
 ```
 
 If a key is not set on the host, the variable is left unset inside the container so tools fall back to their default auth flow (e.g., `claude login`).
@@ -209,19 +211,21 @@ Git and `gh` inside the container authenticate via one of two methods. The recom
 
 1. Create a [fine-grained personal access token](https://github.com/settings/tokens?type=beta) scoped to the repository you're working on. Grant only the permissions you need (typically **Contents: Read & write** and **Pull requests: Read & write**).
 
-2. Export it on your host:
+2. Add it to your host shell profile (`~/.bashrc` or `~/.zshrc`):
 
    ```bash
    export GH_TOKEN=github_pat_...
    ```
 
-3. Start the container — `gh` and `git push/pull` work immediately:
+3. Rebuild the container to pick up the new variable, then verify:
 
    ```bash
-   devc up
+   source ~/.zshrc       # or restart your terminal
+   devc rebuild
    devc shell
-   gh pr list            # Uses GH_TOKEN automatically
-   git push origin feat  # Credential helper delegates to gh
+   echo $GH_TOKEN        # should print the token
+   gh pr list            # uses GH_TOKEN automatically
+   git push origin feat  # credential helper delegates to gh
    ```
 
 The token flows through `containerEnv` in `devcontainer.json`. Inside the container, git's credential helper is configured to delegate to `gh auth git-credential`, which reads `GH_TOKEN` from the environment.

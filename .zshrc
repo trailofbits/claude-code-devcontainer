@@ -35,6 +35,11 @@ export HISTFILE=/commandhistory/.zsh_history
 export HISTSIZE=200000
 export SAVEHIST=200000
 
+# --- Fall back to xterm-256color if host TERM has no terminfo entry ---
+if ! infocmp "$TERM" &>/dev/null; then
+  export TERM=xterm-256color
+fi
+
 # --- Unset empty credential vars (localEnv sets "" when unset on host) ---
 for _var in ANTHROPIC_API_KEY OPENAI_API_KEY EXA_API_KEY GH_TOKEN; do
   [[ -z "${(P)_var}" ]] && unset "$_var"
