@@ -18,6 +18,9 @@ CMD=$(jq -r '.tool_input.command' | head -1)
 # Not a gh command — allow
 echo "$CMD" | grep -qE 'gh[[:space:]]' || exit 0
 
+# Label operations
+echo "$CMD" | grep -qE 'gh[[:space:]]+(label[[:space:]]+(create|edit|view|list))' && exit 0
+
 # PR operations
 echo "$CMD" | grep -qE 'gh[[:space:]]+(pr[[:space:]]+(create|edit|view|list|diff|checks|comment|ready|status))' && exit 0
 
