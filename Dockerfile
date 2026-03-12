@@ -116,6 +116,17 @@ RUN ARCH=$(dpkg --print-architecture) && \
   esac && \
   curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_${LG_ARCH}.tar.gz" | tar -xz -C /home/vscode/.local/bin lazygit
 
+# Install neovim
+ARG NVIM_VERSION=0.11.6
+RUN ARCH=$(dpkg --print-architecture) && \
+  case "${ARCH}" in \
+    amd64) NV_ARCH="x86_64" ;; \
+    arm64) NV_ARCH="arm64" ;; \
+  esac && \
+  curl -fsSL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NV_ARCH}.tar.gz" | tar -xz -C /opt && \
+  mv /opt/nvim-linux-* /opt/nvim && \
+  ln -sf /opt/nvim/bin/nvim /home/vscode/.local/bin/nvim
+
 # Install deno
 RUN curl -fsSL https://deno.land/install.sh | sh
 
@@ -131,9 +142,9 @@ RUN for f in .aliases .exports .functions .vimrc; do \
       if [ -f "/tmp/dotfiles/$f" ]; then cp "/tmp/dotfiles/$f" "$HOME/$f"; fi; \
     done && \
     if [ -f /tmp/dotfiles/starship.toml ]; then cp /tmp/dotfiles/starship.toml "$HOME/.config/starship.toml"; fi && \
+    if [ -d /tmp/dotfiles/nvim ]; then cp -r /tmp/dotfiles/nvim "$HOME/.config/nvim"; fi && \
     if [ -f /tmp/dotfiles/.claude/settings.json ]; then cp /tmp/dotfiles/.claude/settings.json /opt/dotfiles-claude-settings.json; fi && \
     if [ -f /tmp/dotfiles/.claude/statusline.sh ]; then cp /tmp/dotfiles/.claude/statusline.sh /opt/dotfiles-claude-statusline.sh && chmod +x /opt/dotfiles-claude-statusline.sh; fi && \
-    if [ -f /tmp/dotfiles/.claude/settings.local.json ]; then cp /tmp/dotfiles/.claude/settings.local.json /opt/dotfiles-claude-settings.local.json; fi && \
     rm -rf /tmp/dotfiles
 
 # Pre-install vim-plug and plugins so vim starts clean without network calls
@@ -141,6 +152,10 @@ ARG VIM_PLUG_VERSION=0.14.0
 RUN curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
       "https://raw.githubusercontent.com/junegunn/vim-plug/${VIM_PLUG_VERSION}/plug.vim" && \
     (vim -es -u "$HOME/.vimrc" +PlugInstall +qall || true)
+
+# Pre-install lazy.nvim plugins and treesitter parsers so nvim starts clean
+RUN nvim --headless "+Lazy! restore" +qa 2>/dev/null && \
+    nvim --headless "+TSInstallSync bash go json lua markdown python toml typescript yaml" +qa 2>/dev/null || true
 
 # Copy shell configurations
 COPY --chown=vscode:vscode .bashrc /home/vscode/.bashrc
