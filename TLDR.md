@@ -82,6 +82,8 @@ The Codex CLI uses an Azure-hosted OpenAI endpoint. You need an API key from the
 
 Copy either `KEY 1` or `KEY 2`.
 
+You also need the Azure endpoint URL. You get it from me :-)
+
 ## 5. Export env vars and rebuild
 
 Now that you have your tokens, export them in your terminal and rebuild the container. `devc rebuild` picks up whatever is exported in your current shell session.
@@ -90,8 +92,9 @@ Now that you have your tokens, export them in your terminal and rebuild the cont
 # Required for GitHub operations (git push, PRs, issues)
 export GH_TOKEN=github_pat_...
 
-# Required for Codex CLI (used by /review-pr)
+# Required for Codex CLI. See instructions above (used by /review-pr)
 export OPENAI_API_KEY=...
+export CODEX_AZURE_BASE_URL=...
 
 # Optional -- only if you're using an API key instead of a subscription
 # Most people should skip this and run `claude login` inside the container
