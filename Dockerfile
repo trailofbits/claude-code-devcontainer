@@ -113,6 +113,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
   case "${ARCH}" in \
     amd64) LG_ARCH="x86_64" ;; \
     arm64) LG_ARCH="arm64" ;; \
+    *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
   esac && \
   curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_${LG_ARCH}.tar.gz" | tar -xz -C /home/vscode/.local/bin lazygit
 
@@ -122,9 +123,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
   case "${ARCH}" in \
     amd64) NV_ARCH="x86_64" ;; \
     arm64) NV_ARCH="arm64" ;; \
+    *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
   esac && \
   curl -fsSL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NV_ARCH}.tar.gz" | tar -xz -C /opt && \
-  mv /opt/nvim-linux-* /opt/nvim && \
+  mv /opt/nvim-linux-${NV_ARCH} /opt/nvim && \
   ln -sf /opt/nvim/bin/nvim /home/vscode/.local/bin/nvim
 
 # Install deno
@@ -154,8 +156,8 @@ RUN curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
     (vim -es -u "$HOME/.vimrc" +PlugInstall +qall || true)
 
 # Pre-install lazy.nvim plugins and treesitter parsers so nvim starts clean
-RUN nvim --headless "+Lazy! restore" +qa 2>/dev/null && \
-    nvim --headless "+TSInstallSync bash go json lua markdown python toml typescript yaml" +qa 2>/dev/null || true
+RUN nvim --headless "+Lazy! restore" +qa 2>&1 || true
+RUN nvim --headless "+TSInstallSync bash go json lua markdown python toml typescript yaml" +qa 2>&1 || true
 
 # Copy shell configurations
 COPY --chown=vscode:vscode .bashrc /home/vscode/.bashrc

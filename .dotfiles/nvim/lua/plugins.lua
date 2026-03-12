@@ -101,11 +101,9 @@ return {
 				provider = minuet_provider,
 				provider_options = {
 					claude = {
-						api_key = os.getenv("ANTHROPIC_API_KEY"),
 						model = "claude-sonnet-4-20250514",
 					},
 					openai = {
-						api_key = os.getenv("OPENAI_API_KEY"),
 						model = "gpt-5.3-codex",
 					},
 				},

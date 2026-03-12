@@ -69,6 +69,10 @@ if not vim.uv.fs_stat(lazypath) then
 		"https://github.com/folke/lazy.nvim.git",
 		"--branch=stable", lazypath,
 	})
+	if vim.v.shell_error ~= 0 then
+		vim.notify("Failed to clone lazy.nvim", vim.log.levels.ERROR)
+		return
+	end
 end
 vim.opt.rtp:prepend(lazypath)
 

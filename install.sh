@@ -274,8 +274,8 @@ cmd_template() {
       cp "$SCRIPT_DIR/.dotfiles/.claude/settings.json" "$devcontainer_dir/.dotfiles/.claude/"
     [[ -f "$SCRIPT_DIR/.dotfiles/.claude/statusline.sh" ]] &&
       cp "$SCRIPT_DIR/.dotfiles/.claude/statusline.sh" "$devcontainer_dir/.dotfiles/.claude/"
-    [[ -f "$SCRIPT_DIR/.dotfiles/.claude/settings.local.json" ]] &&
-      cp "$SCRIPT_DIR/.dotfiles/.claude/settings.local.json" "$devcontainer_dir/.dotfiles/.claude/"
+    [[ -d "$SCRIPT_DIR/.dotfiles/nvim" ]] &&
+      cp -r "$SCRIPT_DIR/.dotfiles/nvim" "$devcontainer_dir/.dotfiles/"
     log_info "Dotfiles copied"
   fi
 

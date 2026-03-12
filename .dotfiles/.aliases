@@ -73,7 +73,7 @@ alias update='sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get aut
 
 # --- Networking ---
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
-alias whatsmyip='curl http://api.ipify.org?format=text'
+alias whatsmyip='curl https://api.ipify.org?format=text'
 alias ips="ifconfig -a | grep -o 'inet6\\? \\(addr:\\)\\?\\s\\?\\(\\(\\([0-9]\\+\\.\\)\\{3\\}[0-9]\\+\\)\\|[a-fA-F0-9:]\\+\\)' | awk '{ sub(/inet6? (addr:)? ?/, \"\"); print }'"
 
 alias localip="hostname -I | cut -d' ' -f1"
