@@ -196,13 +196,21 @@ sudo iptables -A OUTPUT -j DROP
 - May break tools that require network access
 - DNS resolution still works (consider blocking if paranoid)
 
+## Threat Model
+
+The primary threat this project addresses is **Claude Code running arbitrary commands on your host machine**. When `bypassPermissions` is enabled, Claude executes shell commands, installs packages, and modifies files without confirmation. On a host machine this means it can modify your shell config, `rm -rf` outside the project directory, or abuse locally stored credentials. The devcontainer confines all of that to a disposable container where the blast radius is limited to `/workspace`.
+
+The container includes common development tooling so you can do all development work inside it - not just run Claude. The intended workflow is: clone a repository, start the devcontainer, and work entirely within it. If your project needs additional runtimes or tools beyond what's included, either add them to the Dockerfile for repeated use or install them ad-hoc with `devc exec`.
+
+For the specific boundaries of what is and isn't isolated, see [Security Model](#security-model) below. One nuance worth calling out: the devcontainer runtime automatically forwards your host's SSH agent socket (`SSH_AUTH_SOCK`) into the container. This lets code inside the container authenticate as you over SSH (e.g., `git push`), but the actual private key material stays on the host and is never exposed to the container.
+
 ## Security Model
 
 This devcontainer provides **filesystem isolation** but not complete sandboxing.
 
 **Sandboxed:** Filesystem (host files inaccessible), processes (isolated from host), package installations (stay in container)
 
-**Not sandboxed:** Network (full outbound by default—see [Network Isolation](#network-isolation)), git identity (`~/.gitconfig` mounted read-only), Docker socket (not mounted by default)
+**Not sandboxed:** Network (full outbound by default—see [Network Isolation](#network-isolation)), git identity (`~/.gitconfig` mounted read-only), SSH agent (socket forwarded, keys stay on host), Docker socket (not mounted by default)
 
 The container auto-configures `bypassPermissions` mode—Claude runs commands without confirmation. This would be risky on a host machine, but the container itself is the sandbox.
 
