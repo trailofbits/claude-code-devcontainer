@@ -68,7 +68,7 @@
     "NPM_CONFIG_MINIMUM_RELEASE_AGE": "1440",
     "PYTHONDONTWRITEBYTECODE": "1",
     "PIP_DISABLE_PIP_VERSION_CHECK": "1",
-    "CODEX_AZURE_BASE_URL": "${localEnv:CODEX_AZURE_BASE_URL:https://sqnc-claude-foundry.openai.azure.com/openai/v1/}",
+    "CODEX_AZURE_BASE_URL": "${localEnv:CODEX_AZURE_BASE_URL}",
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
     "EXA_API_KEY": "${localEnv:EXA_API_KEY}",
