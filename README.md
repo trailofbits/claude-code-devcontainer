@@ -133,14 +133,31 @@ claude          # Ready to work
 devc .              Install template + start container in current directory
 devc up             Start the devcontainer
 devc rebuild        Rebuild container (preserves persistent volumes)
+devc destroy [-f]   Remove container, volumes, and image for current project
 devc down           Stop the container
 devc shell          Open zsh shell in container
 devc exec CMD       Execute command inside the container
 devc upgrade        Upgrade Claude Code in the container
 devc mount SRC DST  Add a bind mount (host → container)
+devc sync [NAME]    Sync Claude Code sessions from devcontainers to host
 devc template DIR   Copy devcontainer files to directory
 devc self-install   Install devc to ~/.local/bin
 ```
+
+> **Note:** Use `devc destroy` to clean up a project's Docker resources. Removing containers manually (e.g., `docker rm`) will leave orphaned volumes and images behind that `devc destroy` won't be able to find.
+
+## Session Sync for `/insights`
+
+Claude Code's `/insights` command analyzes your session history, but it only reads from `~/.claude/projects/` on the host. Sessions inside devcontainer volumes are invisible to it.
+
+`devc sync` copies session logs from all devcontainers (running and stopped) to the host so `/insights` can include them:
+
+```bash
+devc sync              # Sync all devcontainers
+devc sync crypto       # Filter by project name (substring match)
+```
+
+Devcontainers are auto-discovered via Docker labels — no need to know container names or IDs. The sync is incremental, so it's safe to run repeatedly.
 
 ## File Sharing
 
