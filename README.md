@@ -116,7 +116,7 @@ claude          # Ready to work
 
 ## Token-Based Auth (Headless)
 
-For non-interactive setups (CI, headless servers, or skipping the login wizard):
+For headless servers or to skip the interactive login wizard:
 
 ```bash
 claude setup-token                          # run on host, one-time
@@ -124,7 +124,7 @@ export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
 devc rebuild                                # rebuilds with token
 ```
 
-The token is forwarded into the container. On first create, `post_install.py` runs a one-shot auth handshake so `claude` starts without the login wizard.
+The token is forwarded into the container. On each container creation, `post_install.py` runs a one-shot auth handshake so `claude` starts without the login wizard.
 
 This works around Claude Code's interactive onboarding wizard always showing in containers, even with valid credentials ([#8938](https://github.com/anthropics/claude-code/issues/8938)).
 

@@ -2,6 +2,7 @@
 """Post-install configuration for Claude Code devcontainer.
 
 Runs on container creation to set up:
+- Onboarding bypass (when CLAUDE_CODE_OAUTH_TOKEN is set)
 - Claude settings (bypassPermissions mode)
 - Tmux configuration (200k history, mouse support)
 - Directory ownership fixes for mounted volumes
@@ -16,10 +17,14 @@ from pathlib import Path
 
 
 def setup_onboarding_bypass():
-    """Bypass the interactive onboarding wizard using CLAUDE_CODE_OAUTH_TOKEN.
+    """Bypass the interactive onboarding wizard when CLAUDE_CODE_OAUTH_TOKEN is set.
 
-    When a token is set, runs a one-shot `claude -p` to populate auth state,
-    then marks onboarding as complete so the TUI skips the login wizard.
+    Runs `claude -p` to seed ~/.claude.json with auth state. The subprocess
+    writes the config file during startup before the API call completes, so
+    a timeout is expected and acceptable. After the subprocess finishes (or
+    times out), we check whether ~/.claude.json was populated and only then
+    set hasCompletedOnboarding.
+
     Workaround for https://github.com/anthropics/claude-code/issues/8938.
     """
     token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
@@ -32,25 +37,51 @@ def setup_onboarding_bypass():
 
     claude_json = Path.home() / ".claude.json"
 
-    # Run a one-shot claude -p to trigger non-interactive auth
     print("[post_install] Running claude -p to populate auth state...", file=sys.stderr)
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["claude", "-p", "ok"],
             capture_output=True,
             text=True,
             timeout=30,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-        print(f"[post_install] Warning: claude -p failed: {e}", file=sys.stderr)
+        if result.returncode != 0:
+            print(
+                f"[post_install] claude -p exited {result.returncode}: "
+                f"{result.stderr.strip()}",
+                file=sys.stderr,
+            )
+    except subprocess.TimeoutExpired:
+        print(
+            "[post_install] claude -p timed out (expected on cold start)",
+            file=sys.stderr,
+        )
+    except (FileNotFoundError, OSError) as e:
+        print(
+            f"[post_install] Warning: could not run claude ({e}) — "
+            "onboarding bypass skipped",
+            file=sys.stderr,
+        )
+        return
 
-    # Read existing ~/.claude.json or start fresh
-    config = {}
-    if claude_json.exists():
-        with contextlib.suppress(json.JSONDecodeError):
-            config = json.loads(claude_json.read_text())
+    if not claude_json.exists():
+        print(
+            f"[post_install] Warning: {claude_json} not created by claude -p — "
+            "onboarding bypass skipped",
+            file=sys.stderr,
+        )
+        return
 
-    # Mark onboarding as complete
+    config: dict = {}
+    try:
+        config = json.loads(claude_json.read_text())
+    except json.JSONDecodeError as e:
+        print(
+            f"[post_install] Warning: {claude_json} has invalid JSON ({e}), "
+            "starting fresh",
+            file=sys.stderr,
+        )
+
     config["hasCompletedOnboarding"] = True
 
     claude_json.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
