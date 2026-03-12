@@ -15,6 +15,50 @@ import sys
 from pathlib import Path
 
 
+def setup_onboarding_bypass():
+    """Bypass the interactive onboarding wizard using CLAUDE_CODE_OAUTH_TOKEN.
+
+    When a token is set, runs a one-shot `claude -p` to populate auth state,
+    then marks onboarding as complete so the TUI skips the login wizard.
+    Workaround for https://github.com/anthropics/claude-code/issues/8938.
+    """
+    token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if not token:
+        print(
+            "[post_install] No CLAUDE_CODE_OAUTH_TOKEN set, skipping onboarding bypass",
+            file=sys.stderr,
+        )
+        return
+
+    claude_json = Path.home() / ".claude.json"
+
+    # Run a one-shot claude -p to trigger non-interactive auth
+    print("[post_install] Running claude -p to populate auth state...", file=sys.stderr)
+    try:
+        subprocess.run(
+            ["claude", "-p", "ok"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        print(f"[post_install] Warning: claude -p failed: {e}", file=sys.stderr)
+
+    # Read existing ~/.claude.json or start fresh
+    config = {}
+    if claude_json.exists():
+        with contextlib.suppress(json.JSONDecodeError):
+            config = json.loads(claude_json.read_text())
+
+    # Mark onboarding as complete
+    config["hasCompletedOnboarding"] = True
+
+    claude_json.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    print(
+        f"[post_install] Onboarding bypass configured: {claude_json}", file=sys.stderr
+    )
+
+
 def setup_claude_settings():
     """Configure Claude Code with bypassPermissions enabled."""
     claude_dir = Path.home() / ".claude"
@@ -34,7 +78,9 @@ def setup_claude_settings():
     settings["permissions"]["defaultMode"] = "bypassPermissions"
 
     settings_file.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-    print(f"[post_install] Claude settings configured: {settings_file}", file=sys.stderr)
+    print(
+        f"[post_install] Claude settings configured: {settings_file}", file=sys.stderr
+    )
 
 
 def setup_tmux_config():
@@ -106,7 +152,9 @@ def fix_directory_ownership():
                         check=True,
                         capture_output=True,
                     )
-                    print(f"[post_install] Fixed ownership: {dir_path}", file=sys.stderr)
+                    print(
+                        f"[post_install] Fixed ownership: {dir_path}", file=sys.stderr
+                    )
             except (PermissionError, subprocess.CalledProcessError) as e:
                 print(
                     f"[post_install] Warning: Could not fix ownership of {dir_path}: {e}",
@@ -204,13 +252,16 @@ node_modules/
     program = /usr/bin/ssh-keygen
 """
     local_gitconfig.write_text(local_config, encoding="utf-8")
-    print(f"[post_install] Local git config created: {local_gitconfig}", file=sys.stderr)
+    print(
+        f"[post_install] Local git config created: {local_gitconfig}", file=sys.stderr
+    )
 
 
 def main():
     """Run all post-install configuration."""
     print("[post_install] Starting post-install configuration...", file=sys.stderr)
 
+    setup_onboarding_bypass()
     setup_claude_settings()
     setup_tmux_config()
     fix_directory_ownership()
