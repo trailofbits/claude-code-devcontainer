@@ -16,16 +16,6 @@ if command -v kubectl &>/dev/null; then
   complete -o default -F __start_kubectl k
 fi
 
-# Google Cloud SDK (conditional)
-for gcloud_inc in \
-  "/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.bash.inc" \
-  "/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/completion.bash.inc" \
-  "/usr/share/google-cloud-sdk/path.bash.inc" \
-  "/usr/share/google-cloud-sdk/completion.bash.inc"; do
-  [ -f "$gcloud_inc" ] && source "$gcloud_inc"
-done
-unset gcloud_inc
-
 # Add ~/bin and ~/.local/bin to PATH (with dedup guard)
 for p in "${HOME}/bin" "${HOME}/.local/bin"; do
   case ":${PATH}:" in

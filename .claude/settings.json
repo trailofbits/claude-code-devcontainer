@@ -39,7 +39,7 @@
 			"Write(.claude/hooks/**)"
 		]
 	},
-	"enabledMcpsonServers": [
+	"enabledMcpjsonServers": [
 		"context7"
 	],
 	"sandbox": {

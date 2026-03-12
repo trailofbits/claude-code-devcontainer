@@ -8,9 +8,6 @@ alias ....="cd ../../.."
 alias .....="cd ../../../.."
 
 # --- Shortcuts ---
-alias dl="cd ~/Downloads"
-alias dt="cd ~/Desktop"
-alias p="cd ~/projects"
 alias g="git"
 alias h="history"
 
@@ -35,7 +32,7 @@ if command -v eza &>/dev/null; then
             l) args+=(-l) ;;
             a) args+=(-a) ;;
             h) args+=(-h) ;;
-            s) args+=(--blocks) ;;  # eza: show allocated blocks (ls -s equivalent)
+            s) ;;  # -s (block size) has no eza equivalent; drop silently
             F) args+=(--classify) ;;
             R) args+=(--recurse) ;;
             *) args+=("-${flags:i:1}") ;;
@@ -61,8 +58,8 @@ else
 fi
 
 # --- cat/find replacements ---
-command -v bat &>/dev/null && alias cat='bat --paging=never'
-command -v fd &>/dev/null && alias find='fd'
+command -v bat &>/dev/null && alias ccat='bat --paging=never'
+command -v fd &>/dev/null && alias ff='fd'
 
 # --- General ---
 alias sudo='sudo '
@@ -71,52 +68,26 @@ alias timer='echo "Timer started. Stop with Ctrl-D." && date && time cat && date
 alias vi='vim'
 alias reload="exec \$SHELL -l"
 
-# --- Update (cross-platform) ---
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  alias update='sudo softwareupdate -i -a; brew update; brew upgrade; brew cleanup'
-else
-  alias update='sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get autoremove -y'
-fi
+# --- Update ---
+alias update='sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get autoremove -y'
 
 # --- Networking ---
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
-alias whatsmyip='curl http://api.ipify.org?format=text'
+alias whatsmyip='curl https://api.ipify.org?format=text'
 alias ips="ifconfig -a | grep -o 'inet6\\? \\(addr:\\)\\?\\s\\?\\(\\(\\([0-9]\\+\\.\\)\\{3\\}[0-9]\\+\\)\\|[a-fA-F0-9:]\\+\\)' | awk '{ sub(/inet6? (addr:)? ?/, \"\"); print }'"
 
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  alias localip="ipconfig getifaddr en0"
-  alias flush="dscacheutil -flushcache && killall -HUP mDNSResponder"
-else
-  alias localip="hostname -I | cut -d' ' -f1"
-fi
+alias localip="hostname -I | cut -d' ' -f1"
 
 alias netstat-proc='lsof -nP -iTCP | grep LISTEN'
 
-# --- Clipboard (cross-platform) ---
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  alias c="tr -d '\\n' | pbcopy"
-else
-  alias c="tr -d '\\n' | xclip -selection clipboard"
-fi
+# --- Clipboard ---
+alias c="tr -d '\\n' | xclip -selection clipboard"
 
 # --- File management ---
 alias cleanup="find . -type f -name '*.DS_Store' -ls -delete"
 command -v hd >/dev/null || alias hd="hexdump -C"
 command -v md5sum >/dev/null || alias md5sum="md5"
 command -v sha1sum >/dev/null || alias sha1sum="shasum"
-
-# --- macOS-specific ---
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  alias show="defaults write com.apple.finder AppleShowAllFiles -bool true && killall Finder"
-  alias hide="defaults write com.apple.finder AppleShowAllFiles -bool false && killall Finder"
-  alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
-  alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
-  alias afk="/System/Library/CoreServices/Menu\\ Extras/User.menu/Contents/Resources/CGSession -suspend"
-  alias emptytrash="sudo rm -rfv /Volumes/*/.Trashes; sudo rm -rfv ~/.Trash; sudo rm -rfv /private/var/log/asl/*.asl"
-  alias badge="tput bel"
-  alias plistbuddy="/usr/libexec/PlistBuddy"
-  alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
-fi
 
 # --- Kubernetes ---
 alias ka='kubectl get pods --all-namespaces'
@@ -133,12 +104,6 @@ alias yat='bat --language yaml'
 # --- SSH/Remote ---
 alias dgx='ssh asus-gx10.lemur-lionfish.ts.net'
 alias hetzner='ssh hetzner.seeqnc.com'
-
-# --- Cloud ---
-alias gcloud_seeqnc="gcloud config configurations activate seeqnc"
-alias gcloud_staging="gcloud config configurations activate tf-staging"
-alias reauth-google="gcloud auth login && gcloud auth application-default login"
-alias reauth-google-no-browser="gcloud auth login --no-launch-browser && gcloud auth application-default login --no-launch-browser"
 
 # --- Git ---
 alias gwl="git worktree list"

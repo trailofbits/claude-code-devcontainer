@@ -172,36 +172,6 @@ def setup_claude_statusline():
     print(f"[post_install] Claude statusline deployed: {target}", file=sys.stderr)
 
 
-def setup_claude_local_settings():
-    """Merge dotfiles' settings.local.json into the volume-mounted Claude config.
-
-    The dotfiles settings are staged at /opt during build because ~/.claude/ is a
-    Docker volume — files baked into the image layer are hidden by the volume mount.
-    This function reads the staged copy and deep-merges it at runtime.
-    """
-    staged = Path("/opt/dotfiles-claude-settings.local.json")
-    if not staged.exists():
-        return
-
-    target = Path.home() / ".claude" / "settings.local.json"
-
-    override = {}
-    with contextlib.suppress(json.JSONDecodeError):
-        override = json.loads(staged.read_text())
-
-    if not override:
-        return
-
-    existing = {}
-    if target.exists():
-        with contextlib.suppress(json.JSONDecodeError):
-            existing = json.loads(target.read_text())
-
-    merged = deep_merge(existing, override)
-    target.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
-    print(f"[post_install] Claude local settings merged: {target}", file=sys.stderr)
-
-
 def setup_global_gitignore():
     """Set up global gitignore and local git config.
 
@@ -322,6 +292,46 @@ def setup_gh_credential_helper():
     print(f"[post_install] gh credential helper configured: {local_gitconfig}", file=sys.stderr)
 
 
+def setup_codex_config():
+    """Configure OpenAI Codex CLI to use Azure OpenAI endpoint.
+
+    Reads CODEX_AZURE_BASE_URL from environment (defaulting to the seeqnc
+    Azure endpoint) so the API endpoint can be changed without rebuilding
+    the container.
+    """
+    codex_dir = Path.home() / ".codex"
+    codex_dir.mkdir(parents=True, exist_ok=True)
+
+    config_file = codex_dir / "config.toml"
+    if config_file.exists():
+        print("[post_install] Codex config exists, skipping", file=sys.stderr)
+        return
+
+    base_url = os.environ.get(
+        "CODEX_AZURE_BASE_URL",
+        "https://sqnc-claude-foundry.openai.azure.com/openai/v1/",
+    )
+
+    config = f"""\
+model = "gpt-5.3-codex"
+model_provider = "azure"
+
+[model_providers.azure]
+name = "Azure OpenAI"
+base_url = "{base_url}"
+env_key = "OPENAI_API_KEY"
+wire_api = "responses"
+
+[projects."/workspace"]
+trust_level = "trusted"
+
+[notice.model_migrations]
+"gpt-5.3-codex" = "gpt-5.4"
+"""
+    config_file.write_text(config, encoding="utf-8")
+    print(f"[post_install] Codex config created: {config_file}", file=sys.stderr)
+
+
 def validate_git_worktree():
     """Check if workspace is a git worktree and verify the git dir is accessible."""
     git_file = Path("/workspace/.git")
@@ -350,11 +360,11 @@ def main():
     setup_claude_settings()
     setup_claude_settings_from_dotfiles()
     setup_claude_statusline()
-    setup_claude_local_settings()
     setup_tmux_config()
     fix_directory_ownership()
     setup_global_gitignore()
     setup_gh_credential_helper()
+    setup_codex_config()
     validate_git_worktree()
 
     print("[post_install] Configuration complete!", file=sys.stderr)
