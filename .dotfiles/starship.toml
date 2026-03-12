@@ -7,14 +7,15 @@ $git_branch\
 $git_state\
 $git_status\
 $git_metrics\
-
 $python\
 $nodejs\
 $cmd_duration\
 $status\
 $fill\
 $kubernetes\
+
 $line_break\
+
 $username\
 $time\
 ${env_var.DEVCONTAINER}\
@@ -39,11 +40,9 @@ disabled = false
 [directory]
 truncation_length = 3
 truncate_to_repo = true
-#truncation_symbol = '…/'
 
 [git_branch]
 symbol = ""
-#style = "fg:white"
 format = '[[\[$symbol $branch ](fg:white)]($style)'
 truncation_length = 24
 
@@ -88,10 +87,6 @@ min_time = 2000
 style = "bg:color_bg3"
 format = '[[  $duration ](fg:color_fg0 bg:color_aqua)]($style)'
 
-#[status]
-#disabled = false
-#format = '[$symbol$status]($style) '
-
 [status]
 disabled = false
 style = "bg:color_bg4"
@@ -109,13 +104,3 @@ variable = "DEVCONTAINER"
 format = '[$symbol devc ]($style)'
 symbol = '󰡨'
 style = 'bold purple'
-
-#[character]
-##success_symbol = "[λ](bold yellow)"
-##error_symbol = "[λ](bold red)"
-#success_symbol = '[](bold fg:bright-green)'
-#error_symbol = '[](bold fg:color_bright_red)'
-#vimcmd_symbol = '[](bold fg:color_bright_green)'
-#vimcmd_replace_one_symbol = '[](bold fg:color_purple)'
-#vimcmd_replace_symbol = '[](bold fg:color_purple)'
-#vimcmd_visual_symbol = '[](bold fg:color_yellow)'
