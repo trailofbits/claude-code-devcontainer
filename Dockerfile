@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zsh \
   # Build tools
   build-essential \
+  # Shell linting
+  shellcheck \
   # Utilities
   jq \
   nano \
