@@ -33,7 +33,7 @@ Commands:
     shell               Open a shell in the running container
     self-install        Install 'devc' command to ~/.local/bin
     update              Update devc to the latest version
-    template [dir]      Copy devcontainer template to directory (default: current)
+    template [--proxy-env] [dir]  Copy devcontainer template to directory (default: current)
     exec <cmd>          Execute a command in the running container
     upgrade             Upgrade Claude Code to latest version
     mount <host> <cont> Add a mount to the devcontainer (recreates container)
@@ -44,6 +44,7 @@ Commands:
 
 Examples:
     devc .                      # Install template and start container
+    devc . --proxy-env          # Same, plus forward ANTHROPIC_BASE_URL/AUTH_TOKEN
     devc up                     # Start container in current directory
     devc rebuild                # Clean rebuild
     devc shell                  # Open interactive shell
@@ -180,6 +181,19 @@ update_devcontainer_mounts() {
 }
 
 cmd_template() {
+  local proxy_env=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --proxy-env)
+        proxy_env=true
+        shift
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
   local target_dir="${1:-.}"
   target_dir="$(cd "$target_dir" 2>/dev/null && pwd)" || {
     log_error "Directory does not exist: $1"
@@ -219,6 +233,16 @@ cmd_template() {
     merge_mounts_from_file "$devcontainer_json" "$preserved_mounts"
     rm -f "$preserved_mounts"
     log_info "Custom mounts restored"
+  fi
+
+  if [[ "$proxy_env" == "true" ]]; then
+    local updated
+    updated=$(jq '.remoteEnv += {
+      "ANTHROPIC_BASE_URL": "${localEnv:ANTHROPIC_BASE_URL:}",
+      "ANTHROPIC_AUTH_TOKEN": "${localEnv:ANTHROPIC_AUTH_TOKEN:}"
+    }' "$devcontainer_json")
+    echo "$updated" > "$devcontainer_json"
+    log_info "Added ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN to remoteEnv"
   fi
 
   log_success "Template installed to $devcontainer_dir"
@@ -637,8 +661,12 @@ cmd_update() {
 }
 
 cmd_dot() {
-  # Install template and start container in one command
-  cmd_template "."
+  local proxy_env_flag=()
+  if [[ "${1:-}" == "--proxy-env" ]]; then
+    proxy_env_flag=("--proxy-env")
+    shift
+  fi
+  cmd_template "${proxy_env_flag[@]}" "."
   cmd_up "."
 }
 
@@ -803,7 +831,7 @@ main() {
 
   case "$command" in
   .)
-    cmd_dot
+    cmd_dot "$@"
     ;;
   up)
     cmd_up "$@"
