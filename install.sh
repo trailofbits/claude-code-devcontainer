@@ -118,6 +118,30 @@ get_workspace_folder() {
   echo "${1:-$(pwd)}"
 }
 
+# Inject or remove --publish from runArgs based on DEVC_API_PORT env var.
+# When set, publishes the port on localhost. When unset, removes any --publish
+# entries so containers don't clash (especially across worktrees).
+setup_port_publishing() {
+  local devcontainer_json="$1"
+
+  [[ -f "$devcontainer_json" ]] || return 0
+
+  local updated
+  if [[ -n "${DEVC_API_PORT:-}" ]]; then
+    local publish_arg="--publish=127.0.0.1:${DEVC_API_PORT}:8000"
+    log_info "Publishing port ${DEVC_API_PORT} → container 8000"
+    updated=$(jq --arg pub "$publish_arg" '
+      .runArgs = ((.runArgs // []) | map(select(startswith("--publish") | not))) + [$pub]
+    ' "$devcontainer_json")
+  else
+    updated=$(jq '
+      .runArgs = ((.runArgs // []) | map(select(startswith("--publish") | not)))
+    ' "$devcontainer_json")
+  fi
+
+  echo "$updated" >"$devcontainer_json"
+}
+
 # Detect if a workspace is a git worktree and resolve the main .git directory.
 # Outputs the absolute path to the main .git/ directory on stdout.
 # Returns empty (no output) if the workspace is a normal repo or not a git repo.
@@ -325,6 +349,7 @@ cmd_up() {
   load_env_file "$workspace_folder"
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
+  setup_port_publishing "$workspace_folder/.devcontainer/devcontainer.json"
   log_info "Starting devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder"
@@ -339,6 +364,7 @@ cmd_rebuild() {
   load_env_file "$workspace_folder"
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
+  setup_port_publishing "$workspace_folder/.devcontainer/devcontainer.json"
   log_info "Rebuilding devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container
