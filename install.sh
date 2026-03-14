@@ -78,6 +78,26 @@ check_devcontainer_cli() {
   fi
 }
 
+load_env_file() {
+  local env_file="$SCRIPT_DIR/.devc.env"
+  if [[ ! -f "$env_file" ]]; then
+    return 0
+  fi
+  log_info "Loading environment from $env_file"
+  # Export non-empty, non-comment lines. Don't override vars already set in the shell.
+  while IFS='=' read -r key value; do
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    # Strip surrounding quotes from value
+    value="${value#\"}"
+    value="${value%\"}"
+    value="${value#\'}"
+    value="${value%\'}"
+    if [[ -z "${!key:-}" && -n "$value" ]]; then
+      export "$key=$value"
+    fi
+  done <"$env_file"
+}
+
 check_no_sys_admin() {
   local workspace="${1:-.}"
   local dc_json="$workspace/.devcontainer/devcontainer.json"
@@ -294,6 +314,7 @@ cmd_up() {
   workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
+  load_env_file
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
   log_info "Starting devcontainer in $workspace_folder..."
@@ -307,6 +328,7 @@ cmd_rebuild() {
   workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
+  load_env_file
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
   log_info "Rebuilding devcontainer in $workspace_folder..."

@@ -193,16 +193,18 @@ API keys set on the host are automatically forwarded into the container:
 | `GH_TOKEN` | GitHub CLI and git HTTPS (see [GitHub Authentication](#github-authentication)) |
 | `GEMINI_API_KEY` | Gemini CLI for PR reviews |
 
-Add them to your host shell profile (e.g., `~/.bashrc`, `~/.zshrc`) so they persist across sessions. Environment variables are read from the host at **container creation time** — if you add or change a key, rebuild the container to pick it up:
+Store them in `~/.claude-devcontainer/.devc.env` so they persist across sessions without polluting your shell profile. Copy the template and fill in your values:
 
 ```bash
-# First time or after changing a key
-export ANTHROPIC_API_KEY=sk-ant-...
-devc rebuild                        # re-creates container with new env
+cp .devc.env.example .devc.env
+$EDITOR .devc.env                   # fill in your keys
+devc rebuild                        # picks up .devc.env automatically
 devc shell
 ```
 
-If a key is not set on the host, the variable is left unset inside the container so tools fall back to their default auth flow (e.g., `claude login`).
+The `.devc.env` file is gitignored and never mounted into the container — Claude cannot see it. If a variable is already exported in your shell, the shell value takes precedence (`.devc.env` won't override it).
+
+If a key is not set anywhere, the variable is left unset inside the container so tools fall back to their default auth flow (e.g., `claude login`).
 
 ## AI Review CLIs
 
@@ -236,16 +238,15 @@ Git and `gh` inside the container authenticate via one of two methods. The recom
 
 1. Create a [fine-grained personal access token](https://github.com/settings/tokens?type=beta) scoped to the repository you're working on. Grant only the permissions you need (typically **Contents: Read & write** and **Pull requests: Read & write**).
 
-2. Add it to your host shell profile (`~/.bashrc` or `~/.zshrc`):
+2. Add it to `~/.claude-devcontainer/.devc.env`:
 
    ```bash
-   export GH_TOKEN=github_pat_...
+   GH_TOKEN=github_pat_...
    ```
 
 3. Rebuild the container to pick up the new variable, then verify:
 
    ```bash
-   source ~/.zshrc       # or restart your terminal
    devc rebuild
    devc shell
    gh auth status        # should show "Logged in" via GH_TOKEN
