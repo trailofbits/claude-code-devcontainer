@@ -307,10 +307,7 @@ def setup_codex_config():
         print("[post_install] Codex config exists, skipping", file=sys.stderr)
         return
 
-    base_url = os.environ.get(
-        "CODEX_AZURE_BASE_URL",
-        "https://sqnc-claude-foundry.openai.azure.com/openai/v1/",
-    )
+    base_url = os.environ.get("CODEX_AZURE_BASE_URL") or "https://sqnc-claude-foundry.openai.azure.com/openai/v1/"
 
     config = f"""\
 model = "gpt-5.3-codex"

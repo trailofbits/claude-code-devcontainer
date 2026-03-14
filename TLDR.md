@@ -76,37 +76,44 @@ The `GH_TOKEN` is a fine-grained PAT scoped to the repos you're working on. This
 
 The Codex CLI uses an Azure-hosted OpenAI endpoint. You need an API key from the Azure portal.
 
-> **Portal link:** [Azure OpenAI resource > Keys and Endpoint](https://portal.azure.com/#@azureseeqnc.onmicrosoft.com/resource/subscriptions/0c63fece-fb6f-4e9b-b4ed-004e55ddc291/resourceGroups/sqnc-claude-code/providers/Microsoft.CognitiveServices/accounts/sqnc-claude-foundry/cskeys)
+> **Portal link:** Go to the [Azure portal](https://portal.azure.com), navigate to your Azure OpenAI resource, then **Keys and Endpoint**.
 >
 > ![Screenshot: Azure portal Keys and Endpoint page](docs/screens/azure-openai-key.png)
 
 Copy either `KEY 1` or `KEY 2`.
 
+You also need the Azure endpoint URL. It's on the same Keys and Endpoint page in the portal — copy the **Endpoint** value.
+
 ## 5. Export env vars and rebuild
 
-Now that you have your tokens, export them in your terminal and rebuild the container. `devc rebuild` picks up whatever is exported in your current shell session.
+Now that you have your tokens, store them in the `.devc.env` file. `devc rebuild` reads this file automatically.
 
 ```bash
-# Required for GitHub operations (git push, PRs, issues)
-export GH_TOKEN=github_pat_...
+# Create .devc.env from the template (one-time)
+cd ~/.claude-devcontainer
+cp .devc.env.example .devc.env
 
-# Required for Codex CLI (used by /review-pr)
-export OPENAI_API_KEY=...
+# Edit .devc.env and fill in your values
+$EDITOR .devc.env
+```
 
-# Optional -- only if you're using an API key instead of a subscription
-# Most people should skip this and run `claude login` inside the container
-export ANTHROPIC_API_KEY=sk-ant-...
+The `.devc.env` file looks like this — fill in the values you have:
 
-# Optional -- Exa AI search (used by some Claude skills)
-export EXA_API_KEY=...
+```bash
+GH_TOKEN=github_pat_...
+OPENAI_API_KEY=...
+CODEX_AZURE_BASE_URL=https://your-endpoint.openai.azure.com/openai/v1/
+EXA_API_KEY=...
+DEVC_API_PORT=8000
+```
 
-# Optional -- Gemini CLI (second opinion on PR reviews)
-export GEMINI_API_KEY=AI...
+Then rebuild:
 
+```bash
 devc rebuild
 ```
 
-If you change any of these later, export the new values and run `devc rebuild` again.
+The `.devc.env` file is gitignored and never enters the container — Claude cannot read it. If you change a key later, edit `.devc.env` and run `devc rebuild` again.
 
 ## 6. Start the container
 
@@ -158,7 +165,7 @@ In short you can yolo through your day without worrying about security. Ok don't
 
 ## 9. Codex CLI and /review-pr
 
-The container comes with [OpenAI Codex CLI](https://github.com/openai/codex) pre-installed and configured to use the Azure OpenAI endpoint. You don't need to set anything up beyond the `OPENAI_API_KEY` from step 4.
+The container comes with [OpenAI Codex CLI](https://github.com/openai/codex) pre-installed and configured to use the Azure OpenAI endpoint. You don't need to set anything up beyond the `OPENAI_API_KEY` and `CODEX_AZURE_BASE_URL` from step 4.
 
 When you run `/review-pr` in Claude, it uses Codex as an independent reviewer. If you also have `GEMINI_API_KEY` set, Gemini CLI adds a third opinion on the same diff.
 

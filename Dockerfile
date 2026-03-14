@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zsh \
   # Build tools
   build-essential \
+  # Shell linting
+  shellcheck \
   # Utilities
   jq \
   nano \
@@ -180,7 +182,7 @@ if [[ -z "$TERM" ]] || { command -v infocmp &>/dev/null && ! infocmp "$TERM" &>/
   export TERM=xterm-256color
 fi
 # Unset empty credential vars (localEnv sets "" when unset on host)
-for _var in ANTHROPIC_API_KEY OPENAI_API_KEY EXA_API_KEY GH_TOKEN GEMINI_API_KEY; do
+for _var in ANTHROPIC_API_KEY OPENAI_API_KEY EXA_API_KEY GH_TOKEN GEMINI_API_KEY CODEX_AZURE_BASE_URL; do
   [[ -z "${!_var}" ]] && unset "$_var"
 done
 unset _var

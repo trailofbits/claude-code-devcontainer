@@ -84,6 +84,28 @@ check_devcontainer_cli() {
   fi
 }
 
+load_env_file() {
+  local env_file="$SCRIPT_DIR/.devc.env"
+  if [[ ! -f "$env_file" ]]; then
+    return 0
+  fi
+  log_info "Loading environment from $env_file"
+  # Export non-empty, non-comment lines. Don't override vars already set in the shell.
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    # Validate key is a POSIX identifier
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    # Strip matching surrounding quotes from value
+    if [[ "$value" == \"*\" ]]; then value="${value#\"}"; value="${value%\"}"; fi
+    if [[ "$value" == \'*\' ]]; then value="${value#\'}"; value="${value%\'}"; fi
+    if [[ -z "${!key:-}" && -n "$value" ]]; then
+      export "$key=$value"
+    fi
+  done <"$env_file"
+}
+
 check_no_sys_admin() {
   local workspace="${1:-.}"
   local dc_json="$workspace/.devcontainer/devcontainer.json"
@@ -300,6 +322,7 @@ cmd_up() {
   workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
+  load_env_file
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
   log_info "Starting devcontainer in $workspace_folder..."
@@ -313,6 +336,7 @@ cmd_rebuild() {
   workspace_folder="$(get_workspace_folder "${1:-}")"
 
   check_devcontainer_cli
+  load_env_file
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
   log_info "Rebuilding devcontainer in $workspace_folder..."

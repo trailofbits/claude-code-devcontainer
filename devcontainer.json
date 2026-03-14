@@ -14,7 +14,8 @@
   },
   "runArgs": [
     "--cap-add=NET_ADMIN",
-    "--cap-add=NET_RAW"
+    "--cap-add=NET_RAW",
+    "--publish=127.0.0.1:${localEnv:DEVC_API_PORT:8000}:8000"
   ],
   "init": true,
   "updateRemoteUserUID": true,
