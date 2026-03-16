@@ -146,6 +146,40 @@ setup_port_publishing() {
   echo "$updated" >"$devcontainer_json"
 }
 
+# Read .devc.packages from workspace and inject as EXTRA_PACKAGES build arg.
+# Packages are installed in a separate cached Dockerfile layer.
+setup_extra_packages() {
+  local workspace="$1"
+  local devcontainer_json="$workspace/.devcontainer/devcontainer.json"
+  local packages_file="$workspace/.devc.packages"
+
+  [[ -f "$devcontainer_json" ]] || return 0
+
+  local packages=""
+  if [[ -f "$packages_file" ]]; then
+    # Read non-empty, non-comment lines into a space-separated string
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ -z "$line" || "$line" == \#* ]] && continue
+      # Validate package name (alphanumeric, hyphens, dots, colons, plus signs)
+      if [[ "$line" =~ ^[a-zA-Z0-9][a-zA-Z0-9.+:_-]*$ ]]; then
+        packages="${packages:+$packages }$line"
+      else
+        log_warn "Skipping invalid package name: $line"
+      fi
+    done <"$packages_file"
+  fi
+
+  if [[ -n "$packages" ]]; then
+    log_info "Extra packages: $packages"
+  fi
+
+  local updated
+  updated=$(jq --arg pkgs "$packages" '
+    .build.args.EXTRA_PACKAGES = $pkgs
+  ' "$devcontainer_json")
+  echo "$updated" >"$devcontainer_json"
+}
+
 # Detect if a workspace is a git worktree and resolve the main .git directory.
 # Outputs the absolute path to the main .git/ directory on stdout.
 # Returns empty (no output) if the workspace is a normal repo or not a git repo.
@@ -354,6 +388,7 @@ cmd_up() {
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
   setup_port_publishing "$workspace_folder/.devcontainer/devcontainer.json"
+  setup_extra_packages "$workspace_folder"
   log_info "Starting devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder"
@@ -369,6 +404,7 @@ cmd_rebuild() {
   check_no_sys_admin "$workspace_folder"
   setup_worktree_mount "$workspace_folder"
   setup_port_publishing "$workspace_folder/.devcontainer/devcontainer.json"
+  setup_extra_packages "$workspace_folder"
   log_info "Rebuilding devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container
