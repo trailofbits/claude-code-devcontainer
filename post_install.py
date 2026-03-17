@@ -351,7 +351,8 @@ def setup_exa_mcp():
     except FileNotFoundError:
         print("[post_install] Warning: claude CLI not found, skipping Exa MCP setup", file=sys.stderr)
     except subprocess.CalledProcessError as e:
-        print(f"[post_install] Warning: Failed to register Exa MCP: {e.stderr}", file=sys.stderr)
+        error_detail = e.stderr or f"exit code {e.returncode}"
+        print(f"[post_install] Warning: Failed to register Exa MCP: {error_detail}", file=sys.stderr)
 
 
 def validate_git_worktree():
