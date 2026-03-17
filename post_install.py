@@ -7,7 +7,6 @@ Runs on container creation to set up:
 - Directory ownership fixes for mounted volumes
 """
 
-import contextlib
 import json
 import os
 import subprocess
@@ -25,8 +24,10 @@ def setup_claude_settings():
     # Load existing settings or start fresh
     settings = {}
     if settings_file.exists():
-        with contextlib.suppress(json.JSONDecodeError):
+        try:
             settings = json.loads(settings_file.read_text())
+        except json.JSONDecodeError as e:
+            print(f"[post_install] Warning: corrupt {settings_file}, resetting: {e}", file=sys.stderr)
 
     # Set bypassPermissions mode
     if "permissions" not in settings:
@@ -143,8 +144,10 @@ def setup_claude_settings_from_dotfiles():
         return
 
     override = {}
-    with contextlib.suppress(json.JSONDecodeError):
+    try:
         override = json.loads(staged.read_text())
+    except json.JSONDecodeError as e:
+        print(f"[post_install] Warning: corrupt {staged}, skipping merge: {e}", file=sys.stderr)
 
     if not override:
         return
@@ -152,8 +155,10 @@ def setup_claude_settings_from_dotfiles():
     settings_file = Path.home() / ".claude" / "settings.json"
     existing = {}
     if settings_file.exists():
-        with contextlib.suppress(json.JSONDecodeError):
+        try:
             existing = json.loads(settings_file.read_text())
+        except json.JSONDecodeError as e:
+            print(f"[post_install] Warning: corrupt {settings_file}, starting fresh: {e}", file=sys.stderr)
 
     merged = deep_merge(existing, override)
     settings_file.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
@@ -307,7 +312,10 @@ def setup_codex_config():
         print("[post_install] Codex config exists, skipping", file=sys.stderr)
         return
 
-    base_url = os.environ.get("CODEX_AZURE_BASE_URL") or "https://sqnc-claude-foundry.openai.azure.com/openai/v1/"
+    base_url = os.environ.get("CODEX_AZURE_BASE_URL")
+    if not base_url:
+        print("[post_install] CODEX_AZURE_BASE_URL not set, skipping Codex config", file=sys.stderr)
+        return
 
     config = f"""\
 model = "gpt-5.3-codex"

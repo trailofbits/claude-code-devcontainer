@@ -191,6 +191,7 @@ You can also run Codex directly from the container.
 | Run Claude                      | `claude`                                   |
 | Run Claude (yolo)               | `claude-yolo`                              |
 | Upgrade Claude to latest        | `devc upgrade`                             |
+| Show container env vars         | `devc env`                                 |
 | Mount host dir into container   | `devc mount ~/data /data`                  |
 | Update devc itself              | `devc update`                              |
 | Check GitHub auth               | `gh auth status`                           |

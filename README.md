@@ -138,6 +138,7 @@ devc down           Stop the container
 devc shell          Open zsh shell in container
 devc exec CMD       Execute command inside the container
 devc upgrade        Upgrade Claude Code in the container
+devc env            Print container env vars as KEY=VALUE (for debugging)
 devc mount SRC DST  Add a bind mount (host → container)
 devc sync [NAME]    Sync Claude Code sessions from devcontainers to host
 devc template DIR   Copy devcontainer files to directory
