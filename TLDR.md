@@ -42,7 +42,7 @@ Your shell history, Claude settings, and GitHub auth survive rebuilds. They live
 
 ## 3. Create a GitHub personal access token
 
-The `GH_TOKEN` is a fine-grained PAT scoped to the repos you're working on. This is deliberate: a scoped token limits the blast radius if something goes wrong inside the container.
+The `GH_TOKEN` is a fine-grained PAT scoped to the repos you're working on. This means you have to generate one token per repo. This is deliberate: a scoped token limits the blast radius if something goes wrong inside the container.
 
 ### Step by step
 
@@ -72,11 +72,13 @@ The `GH_TOKEN` is a fine-grained PAT scoped to the repos you're working on. This
 
 6. Click **Generate token** and copy it immediately. You won't see it again.
 
+7. Message Oliver or someone who has admin access to the Seeqnc organization to approve your token.
+
 ## 4. Get the OpenAI API key from Azure portal
 
 The Codex CLI uses an Azure-hosted OpenAI endpoint. You need an API key from the Azure portal.
 
-> **Portal link:** Go to the [Azure portal](https://portal.azure.com), navigate to your Azure OpenAI resource, then **Keys and Endpoint**.
+> **Portal link:** Go to the [Azure portal](https://portal.azure.com/azureseeqnc.onmicrosoft.com), navigate to your Azure OpenAI resource, then **Keys and Endpoint**.
 >
 > ![Screenshot: Azure portal Keys and Endpoint page](docs/screens/azure-openai-key.png)
 
@@ -86,12 +88,12 @@ You also need the Azure endpoint URL. It's on the same Keys and Endpoint page in
 
 ## 5. Export env vars and rebuild
 
-Now that you have your tokens, store them in the `.devc.env` file. `devc rebuild` reads this file automatically.
+Now that you have your tokens, navigate to the repo you are working on and store them in the `.devc.env` file. `devc rebuild` reads this file automatically.
 
 ```bash
 # Create .devc.env from the template (one-time)
-cd ~/.claude-devcontainer
-cp .devc.env.example .devc.env
+cd $YOUR_REPO
+cp ~/.claude-devcontainer/.devc.env.example .devc.env
 
 # Edit .devc.env and fill in your values
 $EDITOR .devc.env
@@ -115,7 +117,11 @@ devc rebuild
 
 The `.devc.env` file is gitignored and never enters the container — Claude cannot read it. If you change a key later, edit `.devc.env` and run `devc rebuild` again.
 
-## 6. Start the container
+## 6. Ignore the dev container files
+
+So that your local environment is more clean, you can add `.devcontainer` to your `.gitignore` file.
+
+## 7. Start the container
 
 ```bash
 devc shell
@@ -123,7 +129,7 @@ devc shell
 
 You're inside the devcontainer now. Your project files are mounted at `/workspace`.
 
-## 7. Run Claude Code
+## 8. Run Claude Code
 
 First time? Log in with your subscription account:
 
@@ -147,7 +153,7 @@ claude-yolo
 
 That's shorthand for `claude --dangerously-skip-permissions`. Sounds scary. It isn't. Keep reading.
 
-## 8. Why yolo mode is safe here
+## 9. Why yolo mode is safe here
 
 On your actual machine, `--dangerously-skip-permissions` is exactly what it sounds like. Claude can delete files, run arbitrary commands, do whatever it wants.
 
@@ -163,7 +169,7 @@ The container is the sandbox. Yolo mode gives you unrestricted Claude that can't
 
 In short you can yolo through your day without worrying about security. Ok don't take that too seriously.
 
-## 9. Codex CLI and /review-pr
+## 10. Codex CLI and /review-pr
 
 The container comes with [OpenAI Codex CLI](https://github.com/openai/codex) pre-installed and configured to use the Azure OpenAI endpoint. You don't need to set anything up beyond the `OPENAI_API_KEY` and `CODEX_AZURE_BASE_URL` from step 4.
 
@@ -180,7 +186,7 @@ You can also run Codex directly from the container.
 
 **Note:** Codex CLI is a separate product from Claude. It doesn't have the same guardrails, so be careful if you run it directly. Don't run `codex --dangerously-bypass-approvals-and-sandbox` in this container. We might implement something similar to the guardrails for Claude later for Codex if there is demand for it.
 
-## 10. Quick reference
+## 11. Quick reference
 
 | What                            | Command                                    |
 |---------------------------------|--------------------------------------------|
