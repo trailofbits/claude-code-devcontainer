@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install git-delta
+# renovate: datasource=github-releases depName=dandavison/delta
 ARG GIT_DELTA_VERSION=0.18.2
 RUN ARCH=$(dpkg --print-architecture) && \
   curl -fsSL "https://github.com/dandavison/delta/releases/download/${GIT_DELTA_VERSION}/git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" -o /tmp/git-delta.deb && \
@@ -43,6 +44,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 COPY --from=uv /uv /usr/local/bin/uv
 
 # Install fzf from GitHub releases (newer than apt, includes built-in shell integration)
+# renovate: datasource=github-releases depName=junegunn/fzf
 ARG FZF_VERSION=0.70.0
 RUN ARCH=$(dpkg --print-architecture) && \
   case "${ARCH}" in \
@@ -94,6 +96,7 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
   fnm default ${NODE_VERSION}
 
 # Install Oh My Zsh
+# renovate: datasource=github-releases depName=deluan/zsh-in-docker
 ARG ZSH_IN_DOCKER_VERSION=1.2.1
 RUN sh -c "$(curl -fsSL https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
   -p git \
