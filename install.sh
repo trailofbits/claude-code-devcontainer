@@ -136,9 +136,10 @@ setup_gpu_passthrough() {
 
   local updated
   if [[ -n "${DEVC_GPU:-}" ]]; then
+    DEVC_GPU="${DEVC_GPU,,}"
     if [[ "$DEVC_GPU" != "all" ]]; then
-      if ! [[ "$DEVC_GPU" =~ ^[1-9][0-9]*$ ]]; then
-        log_error "DEVC_GPU must be 'all' or a positive integer, got: $DEVC_GPU"
+      if ! [[ "$DEVC_GPU" =~ ^[1-9][0-9]*$ ]] || (( DEVC_GPU > 128 )); then
+        log_error "DEVC_GPU must be 'all' or a positive integer (1-128), got: $DEVC_GPU"
         exit 1
       fi
     fi
@@ -154,7 +155,9 @@ setup_gpu_passthrough() {
   fi
 
   [[ -n "$updated" ]] || { log_error "jq produced empty output for $devcontainer_json"; return 1; }
-  echo "$updated" >"$devcontainer_json"
+  local tmp
+  tmp=$(mktemp "${devcontainer_json}.tmp.XXXXXX")
+  echo "$updated" >"$tmp" && mv "$tmp" "$devcontainer_json"
 }
 
 # Inject or remove --publish from runArgs based on DEVC_API_PORT env var.
@@ -556,6 +559,7 @@ HEADER
   echo ""
   echo "# Optional — GPU passthrough: \"all\" or number of GPUs (requires NVIDIA Container Toolkit)"
   echo "# DEVC_GPU=all"
+  echo ""
 }
 
 cmd_mount() {
@@ -586,6 +590,10 @@ cmd_mount() {
   fi
 
   check_devcontainer_cli
+
+  load_env_file "$workspace_folder"
+  setup_port_publishing "$devcontainer_json"
+  setup_gpu_passthrough "$devcontainer_json"
 
   log_info "Adding mount: $host_path → $container_path"
   update_devcontainer_mounts "$devcontainer_json" "$host_path" "$container_path" "$readonly"
