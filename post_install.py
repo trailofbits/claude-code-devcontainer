@@ -227,12 +227,24 @@ node_modules/
 .vscode/
 *.sublime-*
 
+# Devcontainer
+.devcontainer
+.devc.env
+
 # Misc
 *.log
 .env.local
 .env.*.local
 """
-    gitignore.write_text(patterns, encoding="utf-8")
+    # Preserve any patterns from .dotfiles (copied at build time)
+    existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
+    if existing:
+        existing_lines = set(existing.splitlines())
+        new_lines = [ln for ln in patterns.splitlines() if ln not in existing_lines]
+        combined = existing.rstrip("\n") + "\n\n# Container defaults\n" + "\n".join(new_lines) + "\n"
+    else:
+        combined = patterns
+    gitignore.write_text(combined, encoding="utf-8")
     print(f"[post_install] Global gitignore created: {gitignore}", file=sys.stderr)
 
     # Create local git config that includes host config and sets excludesfile + delta
