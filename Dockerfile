@@ -84,7 +84,7 @@ fi
 USER vscode
 
 # Set PATH early so claude, deno, and other user-installed binaries are available
-ENV PATH="/home/vscode/.deno/bin:/home/vscode/.local/bin:$PATH"
+ENV PATH="/home/vscode/.pixi/bin:/home/vscode/.deno/bin:/home/vscode/.local/bin:$PATH"
 
 # Install Claude Code natively with marketplace plugins
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
@@ -96,6 +96,9 @@ RUN curl -fsSL https://claude.ai/install.sh | bash && \
 
 # Install Python 3.13 via uv (fast binary download, not source compilation)
 RUN uv python install 3.13 --default
+
+# Install pixi (fast conda package manager, for packages that need conda channels)
+RUN curl -fsSL https://pixi.sh/install.sh | bash -s -- --no-path-update
 
 # Install ast-grep (AST-based code search)
 RUN uv tool install ast-grep-cli
