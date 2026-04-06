@@ -35,7 +35,10 @@ def setup_onboarding_bypass():
         )
         return
 
-    claude_json = Path.home() / ".claude.json"
+    # When `CLAUDE_CONFIG_DIR` is set, as is done in `devcontainer.json`, `claude` looks
+    # for `.claude.json` in that folder. Otherwise, `~` is used.
+    claude_json_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home()))
+    claude_json = claude_json_dir / ".claude.json"
 
     print("[post_install] Running claude -p to populate auth state...", file=sys.stderr)
     try:
@@ -92,7 +95,7 @@ def setup_onboarding_bypass():
 
 def setup_claude_settings():
     """Configure Claude Code with bypassPermissions enabled."""
-    claude_dir = Path.home() / ".claude"
+    claude_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
     claude_dir.mkdir(parents=True, exist_ok=True)
 
     settings_file = claude_dir / "settings.json"
