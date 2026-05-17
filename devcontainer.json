@@ -45,6 +45,8 @@
     "source=devc-${localWorkspaceFolderBasename}-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=devc-${localWorkspaceFolderBasename}-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
     "source=devc-${localWorkspaceFolderBasename}-gh-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
+    "source=devc-${localWorkspaceFolderBasename}-nix-${devcontainerId},target=/nix,type=volume",
+    "source=devc-${localWorkspaceFolderBasename}-dpm-${devcontainerId},target=/home/vscode/.dpm,type=volume",
     "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly",
     "source=${localWorkspaceFolder}/.devcontainer,target=/workspace/.devcontainer,type=bind,readonly",
     "source=${localWorkspaceFolder}/.git/config,target=/workspace/.git/config,type=bind,readonly",
@@ -72,5 +74,6 @@
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\"",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": "uv run --no-project /opt/post_install.py"
+  "postCreateCommand": "uv run --no-project /opt/post_install.py",
+  "postStartCommand": "sudo /opt/start-nix-daemon.sh"
 }

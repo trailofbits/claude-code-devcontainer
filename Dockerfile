@@ -30,7 +30,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ipset \
   iptables \
   iproute2 \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
+  # Java runtime (required by the Daml dpm CLI)
+  openjdk-21-jdk-headless \
+  && apt-get clean && rm -rf /var/lib/apt/lists/* \
+  && ln -sfn /usr/lib/jvm/java-21-openjdk-$(dpkg --print-architecture) /opt/java-21
+
+ENV JAVA_HOME=/opt/java-21
 
 # Install git-delta
 # renovate: datasource=github-releases depName=dandavison/delta
@@ -60,6 +65,21 @@ RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /opt && \
   touch /commandhistory/.zsh_history && \
   chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /opt
 
+# Install Nix via the Determinate Systems installer.
+#   --init none: no systemd inside the container; nix-daemon is started by
+#                /opt/start-nix-daemon.sh from postStartCommand on every boot.
+#   --extra-conf "sandbox = false": the container itself already provides
+#                isolation; Nix's per-build sandbox depends on user namespaces
+#                that are unreliable across container runtimes.
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
+  | sh -s -- install linux \
+    --extra-conf "sandbox = false" \
+    --init none \
+    --no-confirm
+
+# Daemon-start helper (invoked from devcontainer.json postStartCommand)
+COPY --chmod=0755 start-nix-daemon.sh /opt/start-nix-daemon.sh
+
 # Set environment variables
 ENV DEVCONTAINER=true
 ENV SHELL=/bin/zsh
@@ -79,6 +99,18 @@ RUN curl -fsSL https://claude.ai/install.sh | bash && \
   claude plugin marketplace add anthropics/skills && \
   claude plugin marketplace add trailofbits/skills && \
   claude plugin marketplace add trailofbits/skills-curated
+
+RUN curl -fsSL https://foundry.paradigm.xyz | bash && \
+  /home/vscode/.foundry/bin/foundryup
+ENV PATH="/home/vscode/.foundry/bin:$PATH"
+
+# Install dpm (Digital Asset's Daml Package Manager).
+# TMPDIR=/tmp avoids a virtiofs symlink-corruption bug observed when the
+# installer extracts under bind-mounted paths like /workspace.
+# Bootstraps the SDK (~2.3 GB into ~/.dpm/); the directory is persisted
+# across rebuilds via the dpm volume in devcontainer.json.
+RUN TMPDIR=/tmp curl --proto '=https' --tlsv1.2 -sSf https://get.digitalasset.com/install/install.sh | sh
+ENV PATH="/home/vscode/.dpm/bin:/nix/var/nix/profiles/default/bin:$PATH"
 
 # Install Python 3.13 via uv (fast binary download, not source compilation)
 RUN uv python install 3.13 --default
