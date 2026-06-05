@@ -68,6 +68,7 @@ def fix_directory_ownership():
 
     dirs_to_fix = [
         Path.home() / ".claude",
+        Path.home() / ".codex",
         Path("/commandhistory"),
         Path.home() / ".config" / "gh",
     ]
