@@ -8,7 +8,7 @@
 #
 # Safe to invoke repeatedly: a running daemon is detected and skipped.
 
-set -e
+set -euo pipefail
 
 DAEMON=/nix/var/nix/profiles/default/bin/nix-daemon
 LOG=/var/log/nix-daemon.log

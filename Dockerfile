@@ -60,10 +60,22 @@ RUN ARCH=$(dpkg --print-architecture) && \
   curl -fsSL "https://github.com/junegunn/fzf/releases/download/v${FZF_VERSION}/fzf-${FZF_VERSION}-${FZF_ARCH}.tar.gz" | tar -xz -C /usr/local/bin
 
 # Create directories and set ownership (combined for fewer layers)
-RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /opt && \
+RUN mkdir -p \
+  /commandhistory \
+  /workspace \
+  /home/vscode/.claude \
+  /home/vscode/.codex \
+  /home/vscode/.agents \
+  /opt && \
   touch /commandhistory/.bash_history && \
   touch /commandhistory/.zsh_history && \
-  chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /opt
+  chown -R vscode:vscode \
+  /commandhistory \
+  /workspace \
+  /home/vscode/.claude \
+  /home/vscode/.codex \
+  /home/vscode/.agents \
+  /opt
 
 # Install Nix via the Determinate Systems installer.
 #   --init none: no systemd inside the container; nix-daemon is started by
@@ -100,6 +112,9 @@ RUN curl -fsSL https://claude.ai/install.sh | bash && \
   claude plugin marketplace add trailofbits/skills && \
   claude plugin marketplace add trailofbits/skills-curated
 
+# Install Codex CLI natively.
+RUN curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+
 RUN curl -fsSL https://foundry.paradigm.xyz | bash && \
   /home/vscode/.foundry/bin/foundryup
 ENV PATH="/home/vscode/.foundry/bin:$PATH"
@@ -110,7 +125,7 @@ ENV PATH="/home/vscode/.foundry/bin:$PATH"
 # Bootstraps the SDK (~2.3 GB into ~/.dpm/); the directory is persisted
 # across rebuilds via the dpm volume in devcontainer.json.
 RUN TMPDIR=/tmp curl --proto '=https' --tlsv1.2 -sSf https://get.digitalasset.com/install/install.sh | sh
-ENV PATH="/home/vscode/.dpm/bin:/nix/var/nix/profiles/default/bin:$PATH"
+ENV PATH="/home/vscode/.dpm/bin:/home/vscode/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
 
 # Install Python 3.13 via uv (fast binary download, not source compilation)
 RUN uv python install 3.13 --default

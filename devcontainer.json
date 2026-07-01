@@ -44,11 +44,16 @@
   "mounts": [
     "source=devc-${localWorkspaceFolderBasename}-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=devc-${localWorkspaceFolderBasename}-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    "source=devc-${localWorkspaceFolderBasename}-codex-${devcontainerId},target=/home/vscode/.codex,type=volume",
+    "source=devc-${localWorkspaceFolderBasename}-agents-${devcontainerId},target=/home/vscode/.agents,type=volume",
     "source=devc-${localWorkspaceFolderBasename}-gh-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
     "source=devc-${localWorkspaceFolderBasename}-nix-${devcontainerId},target=/nix,type=volume",
     "source=devc-${localWorkspaceFolderBasename}-dpm-${devcontainerId},target=/home/vscode/.dpm,type=volume",
     "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly",
     "source=${localWorkspaceFolder}/.devcontainer,target=/workspace/.devcontainer,type=bind,readonly",
+    "source=${localEnv:HOME}/Projects/.dotfiles,target=/opt/dotfiles,type=bind,readonly",
+    "source=${localEnv:HOME}/Projects/.dotfiles/modules/claude-code/config,target=/opt/claude-config,type=bind,readonly",
+    "source=${localEnv:HOME}/Projects/.dotfiles/modules/codex-code/config,target=/opt/codex-config,type=bind,readonly",
     "source=${localWorkspaceFolder}/.git/config,target=/workspace/.git/config,type=bind,readonly",
     "source=${localWorkspaceFolder}/.git/hooks,target=/workspace/.git/hooks,type=bind,readonly"
   ],
@@ -69,11 +74,12 @@
   },
   "remoteEnv": {
     "CLAUDE_CODE_OAUTH_TOKEN": "${localEnv:CLAUDE_CODE_OAUTH_TOKEN:}",
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY:}"
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY:}",
+    "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY:}"
   },
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\"",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": "uv run --no-project /opt/post_install.py",
+  "postCreateCommand": "sudo /opt/start-nix-daemon.sh && uv run --no-project /opt/post_install.py",
   "postStartCommand": "sudo /opt/start-nix-daemon.sh"
 }
