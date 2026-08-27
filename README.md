@@ -1,17 +1,19 @@
 # Claude Code in a devcontainer
 
-A sandboxed development environment for running Claude Code with `bypassPermissions` safely enabled. Built at [Trail of Bits](https://www.trailofbits.com/) for security audit workflows.
+A containerized development environment for running Claude Code with `bypassPermissions` enabled. Built at [Trail of Bits](https://www.trailofbits.com/) for security audit workflows.
 
 ## Why Use This?
 
-Running Claude with `bypassPermissions` on your host machine is risky—it can execute any command without confirmation. This devcontainer provides **filesystem isolation** so you get the productivity benefits of unrestricted Claude without risking your host system.
+Running Claude with `bypassPermissions` on your host machine is risky—it can execute any command without confirmation. This devcontainer provides **filesystem isolation**, so unrestricted Claude damages a disposable container instead of your home directory.
 
 **Designed for:**
 
-- **Security audits**: Review client code without risking your host
-- **Untrusted repositories**: Explore unknown codebases safely
+- **Security audits**: Review client code without exposing your host
+- **Untrusted repositories**: Explore unknown codebases — via the terminal workflow, see [Threat Model](#threat-model)
 - **Experimental work**: Let Claude modify code freely in isolation
 - **Multi-repo engagements**: Work on multiple related repositories
+
+Read the [Threat Model](#threat-model) before pointing this at hostile code. It is a strong containment boundary, not a sandbox.
 
 ## Prerequisites
 
@@ -65,9 +67,9 @@ Choose the pattern that fits your workflow:
 
 ### Pattern A: Per-Project Container (Isolated)
 
-Each project gets its own container with independent volumes. Best for one-off reviews, untrusted repos, or when you need isolation between projects.
+Each project gets its own container with independent volumes. Best for one-off reviews or when you need isolation between projects.
 
-**Terminal:**
+**Terminal** — the workflow to use for untrusted code:
 
 ```bash
 git clone <untrusted-repo>
@@ -76,7 +78,9 @@ devc .          # Installs template + starts container
 devc shell      # Opens shell in container
 ```
 
-**VS Code / Cursor:**
+**VS Code / Cursor** — for code you trust:
+
+> **Not for untrusted code.** Container code can execute commands on your host through this path, by design. See [Threat Model](#threat-model).
 
 1. Install the Dev Containers extension:
    - VS Code: `ms-vscode-remote.remote-containers`
@@ -162,6 +166,8 @@ devc sync crypto       # Filter by project name (substring match)
 
 Devcontainers are auto-discovered via Docker labels — no need to know container names or IDs. The sync is incremental, so it's safe to run repeatedly.
 
+> **Security note:** this copies container-authored data onto your host, so it prompts first (`--trusted` skips it). Only `*.jsonl` logs are copied, always under a `-devcontainer-<project>` key, so a container cannot plant files elsewhere in `~/.claude/projects/`. The transcripts are still container-authored text that a later host session will read.
+
 ## File Sharing
 
 ### VS Code / Cursor
@@ -214,21 +220,17 @@ sudo iptables -A OUTPUT -j DROP
 
 ## Threat Model
 
-The primary threat this project addresses is **Claude Code running arbitrary commands on your host machine**. When `bypassPermissions` is enabled, Claude executes shell commands, installs packages, and modifies files without confirmation. On a host machine this means it can modify your shell config, `rm -rf` outside the project directory, or abuse locally stored credentials. The devcontainer confines all of that to a disposable container where the blast radius is limited to `/workspace`.
+**Protects against:** Claude with `bypassPermissions` running wild *during* a session. On a bare host that reaches your SSH keys and your whole home directory; here it only reaches `/workspace` and a disposable container.
 
-The container includes common development tooling so you can do all development work inside it - not just run Claude. The intended workflow is: clone a repository, start the devcontainer, and work entirely within it. If your project needs additional runtimes or tools beyond what's included, either add them to the Dockerfile for repeated use or install them ad-hoc with `devc exec`.
+**Does not protect against:**
 
-For the specific boundaries of what is and isn't isolated, see [Security Model](#security-model) below. One nuance worth calling out: the devcontainer runtime automatically forwards your host's SSH agent socket (`SSH_AUTH_SOCK`) into the container. This lets code inside the container authenticate as you over SSH (e.g., `git push`), but the actual private key material stays on the host and is never exposed to the container.
+- **Container escape.** A container is containment, not a security boundary. Escape should be hard, not impossible.
+- **Booby traps you trigger later.** `/workspace` is writable, `.git/` included, and git runs commands named in files all over `.git/` — so a host-side `git status` afterward can execute container-planted code as you. Same idea for `.envrc`, `make`, and npm scripts. The read-only `.git/config` and `.git/hooks` mounts raise the bar but do not close this.
+- **VS Code "Reopen in Container".** It runs an extension host *inside* the container wired to your editor over RPC, and container code can drive host-only editor commands (`terminal.newLocal` then `sendSequence`) to run shell commands on your host. No container escape needed. This is [Microsoft's design](https://github.com/microsoft/vscode-remote-release/issues/6608), not a bug here ([how it works](https://blog.theredguild.org/leveraging-vscode-internals-to-escape-containers/)).
 
-## Security Model
+**So, for untrusted code:** use `devc shell` / `devc exec` and never "Reopen in Container" — the CLI path starts no RPC bridge. Afterwards treat the workspace as untrusted, and run git and builds inside the container rather than on the host.
 
-This devcontainer provides **filesystem isolation** but not complete sandboxing.
-
-**Sandboxed:** Filesystem (host files inaccessible), processes (isolated from host), package installations (stay in container)
-
-**Not sandboxed:** Network (full outbound by default—see [Network Isolation](#network-isolation)), git identity (`~/.gitconfig` mounted read-only), SSH agent (socket forwarded, keys stay on host), Docker socket (not mounted by default)
-
-The container auto-configures `bypassPermissions` mode—Claude runs commands without confirmation. This would be risky on a host machine, but the container itself is the sandbox.
+**Also not isolated:** network (full outbound by default, see [Network Isolation](#network-isolation)), forwarded SSH agent (container code can authenticate as you; keys stay on the host), `~/.gitconfig` (read-only). The Docker socket is not mounted.
 
 ## Container Details
 
@@ -238,10 +240,12 @@ The container auto-configures `bypassPermissions` mode—Claude runs commands wi
 | User | `vscode` (passwordless sudo), working dir `/workspace` |
 | Tools | `rg`, `fd`, `tmux`, `fzf`, `delta`, `iptables`, `ipset` |
 | Volumes (survive rebuilds) | Command history (`/commandhistory`), Claude config (`~/.claude`), GitHub CLI auth (`~/.config/gh`) |
-| Host mounts | `~/.gitconfig` (read-only), `.devcontainer/` (read-only) |
-| Auto-configured | [anthropics](https://github.com/anthropics/claude-code-plugins) + [trailofbits](https://github.com/trailofbits/claude-code-plugins) skills, git-delta |
+| Host mounts | `~/.gitconfig`, `.devcontainer/`, `.git/config`, `.git/hooks/` (all read-only) |
+| Auto-configured | `bypassPermissions` mode (via `post_install.py`), [anthropics](https://github.com/anthropics/claude-code-plugins) + [trailofbits](https://github.com/trailofbits/claude-code-plugins) skills, git-delta |
 
 Volumes are stored outside the container, so your shell history, Claude settings, and `gh` login persist even after `devc rebuild`. Host `~/.gitconfig` is mounted read-only for git identity.
+
+The container ships common development tooling so you can do all your work inside it, not just run Claude. The intended workflow is: clone a repository, start the container, and stay in it. If you need extra runtimes, add them to the Dockerfile for repeat use or install them ad-hoc with `devc exec`.
 
 ## Troubleshooting
 
