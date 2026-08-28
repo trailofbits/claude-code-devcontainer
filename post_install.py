@@ -257,6 +257,7 @@ node_modules/
 
     # Create local git config that includes host config and sets excludesfile + delta
     # Delta config is included here so it works even if host doesn't have it configured
+    # safe.directory takes no path glob, and repos can sit anywhere under /workspace
     local_config = f"""\
 # Container-local git config
 # Includes host config (mounted read-only) and adds container settings
@@ -285,6 +286,10 @@ node_modules/
 
 [gpg "ssh"]
     program = /usr/bin/ssh-keygen
+
+# Bind mounts report a foreign uid, which trips git's ownership check
+[safe]
+    directory = *
 """
     local_gitconfig.write_text(local_config, encoding="utf-8")
     print(
