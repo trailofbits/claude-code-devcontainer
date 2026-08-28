@@ -4,16 +4,14 @@ A containerized development environment for running Claude Code with `bypassPerm
 
 ## Why Use This?
 
-Running Claude with `bypassPermissions` on your host machine is risky—it can execute any command without confirmation. This devcontainer provides **filesystem isolation**, so unrestricted Claude damages a disposable container instead of your home directory.
+Running Claude with `bypassPermissions` on your host machine is risky—it can execute any command without confirmation. This devcontainer provides **filesystem isolation**, so unrestricted Claude damages a disposable container instead of your host system.
 
 **Designed for:**
 
 - **Security audits**: Review client code without exposing your host
-- **Untrusted repositories**: Explore unknown codebases — via the terminal workflow, see [Threat Model](#threat-model)
+- **Untrusted repositories**: Explore unknown codebases safely
 - **Experimental work**: Let Claude modify code freely in isolation
 - **Multi-repo engagements**: Work on multiple related repositories
-
-Read the [Threat Model](#threat-model) before pointing this at hostile code. It is a strong containment boundary, not a sandbox.
 
 ## Prerequisites
 
@@ -67,9 +65,9 @@ Choose the pattern that fits your workflow:
 
 ### Pattern A: Per-Project Container (Isolated)
 
-Each project gets its own container with independent volumes. Best for one-off reviews or when you need isolation between projects.
+Each project gets its own container with independent volumes. Best for one-off reviews, untrusted repos, or when you need isolation between projects.
 
-**Terminal** — the workflow to use for untrusted code:
+**Terminal:**
 
 ```bash
 git clone <untrusted-repo>
@@ -78,9 +76,9 @@ devc .          # Installs template + starts container
 devc shell      # Opens shell in container
 ```
 
-**VS Code / Cursor** — for code you trust:
+**VS Code / Cursor:**
 
-> **Not for untrusted code.** Container code can execute commands on your host through this path, by design. See [Threat Model](#threat-model).
+> **Not recommended for untrusted code.** Container code can execute commands on your host through this path, by design. See [Threat Model](#threat-model).
 
 1. Install the Dev Containers extension:
    - VS Code: `ms-vscode-remote.remote-containers`
@@ -220,15 +218,13 @@ sudo iptables -A OUTPUT -j DROP
 
 ## Threat Model
 
-**Protects against:** Claude with `bypassPermissions` running wild *during* a session. On a bare host that reaches your SSH keys and your whole home directory; here it only reaches `/workspace` and a disposable container.
+**Protects against:** Claude with `bypassPermissions` running wild during a session. On a bare host that reaches your SSH keys and your whole home directory; here it only reaches `/workspace` and a disposable container.
 
 **Does not protect against:**
 
-- **Container escape.** A container is containment, not a security boundary. Escape should be hard, not impossible.
-- **Booby traps you trigger later.** `/workspace` is writable, `.git/` included, and git runs commands named in files all over `.git/` — so a host-side `git status` afterward can execute container-planted code as you. Same idea for `.envrc`, `make`, and npm scripts. The read-only `.git/config` and `.git/hooks` mounts raise the bar but do not close this.
-- **VS Code "Reopen in Container".** It runs an extension host *inside* the container wired to your editor over RPC, and container code can drive host-only editor commands (`terminal.newLocal` then `sendSequence`) to run shell commands on your host. No container escape needed. This is [Microsoft's design](https://github.com/microsoft/vscode-remote-release/issues/6608), not a bug here ([how it works](https://blog.theredguild.org/leveraging-vscode-internals-to-escape-containers/)).
-
-**So, for untrusted code:** use `devc shell` / `devc exec` and never "Reopen in Container" — the CLI path starts no RPC bridge. Afterwards treat the workspace as untrusted, and run git and builds inside the container rather than on the host.
+- **Container escape.** A container is containment, not a strong security boundary. Escape should be hard, not impossible.
+- **Deferred escape.** Container-planted code can get executed on the host, when user performs some action on the host. Planting files under shared `.git` folder is an example escape path.
+- **VS Code "Reopen in Container".** It runs an extension host *inside* the container wired to your editor over RPC, and container code can drive host-only editor commands (`terminal.newLocal` then `sendSequence`) to run shell commands on your host. This is [Microsoft's design](https://github.com/microsoft/vscode-remote-release/issues/6608#issuecomment-1112960548), not a bug here ([how it works](https://blog.theredguild.org/leveraging-vscode-internals-to-escape-containers/)).
 
 **Also not isolated:** network (full outbound by default, see [Network Isolation](#network-isolation)), forwarded SSH agent (container code can authenticate as you; keys stay on the host), `~/.gitconfig` (read-only). The Docker socket is not mounted.
 
