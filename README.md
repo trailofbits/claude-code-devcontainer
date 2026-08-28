@@ -241,15 +241,17 @@ sudo iptables -A OUTPUT -j DROP
 
 **Protects against:**
 - Claude with `bypassPermissions` running wild during a session.
-- Direct access to your SSH keys
+- Direct access to your SSH key material and other credentials
 - Unrestricted, direct access to the whole filesystem
+- Cross-engagement leakage
 
 **Does not protect against:**
 
 - **Container escape.** A container is containment, not a strong security boundary. Escape should be hard, not impossible.
-- **Deferred escape.** Container-planted code can get executed on the host, when user performs some action on the host. Planting files under shared `.git` folder is an example escape path.
+- **Deferred escape.** Container-planted code can get executed on the host, when the user performs some action on the host. Planting files under shared `.git` folder is an example escape path.
 - **VS Code "Reopen in Container".** The command runs an extension host *inside* the container wired to your editor over RPC, and container code can drive host-only editor commands (`terminal.newLocal` then `sendSequence`) to run shell commands on your host. This is [Microsoft's design](https://github.com/microsoft/vscode-remote-release/issues/6608#issuecomment-1112960548), not a bug here ([how it works](https://blog.theredguild.org/leveraging-vscode-internals-to-escape-containers/)).
-- **Network rules overwrite**: Container has `NET_ADMIN` and passwordless sudo, its user can change the iptables rules dynamically. 
+- **Network rules overwrite.** Container has `NET_ADMIN` and passwordless sudo, its user can change the iptables rules dynamically.
+- **Exfiltration of in-container credentials.** Claude, GitHub, and other tokens provided to container are simply accessible inside it.
 
 **Also not isolated:** forwarded SSH agent (container code can authenticate as you; keys stay on the host), `~/.gitconfig` (read-only). The Docker socket is not mounted.
 
