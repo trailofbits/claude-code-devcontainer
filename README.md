@@ -227,15 +227,11 @@ sudo iptables -A OUTPUT -m set --match-set allowed-egress dst -j ACCEPT
 sudo iptables -A OUTPUT -j DROP
 ```
 
-Re-run **step 2 only** to pick up new addresses. These hosts are CDN-fronted and their
-IPs rotate, so a set populated once goes stale and the allowlist silently stops matching.
-
 ### Trade-offs
 
 - Blocks package managers unless you allowlist registries
 - May break tools that require network access
-- DNS is permitted, so DNS remains an exfiltration channel. Restricting it to the
-  container's resolver (above) limits which server answers, not what is asked
+- DNS is permitted (DNS remains an exfiltration channel)
 - The allowlist is per-IP, so any other site behind the same CDN address is also reachable
 - IPv6 is not filtered. If your Docker network has an IPv6 default route, mirror the
   rules with `ip6tables` and an `ipset ... family inet6`
@@ -243,14 +239,17 @@ IPs rotate, so a set populated once goes stale and the allowlist silently stops 
 
 ## Threat Model
 
-**Protects against:** Claude with `bypassPermissions` running wild during a session. On a bare host that reaches your SSH keys and your whole home directory; here it only reaches `/workspace` and a disposable container.
+**Protects against:**
+- Claude with `bypassPermissions` running wild during a session.
+- Direct access to your SSH keys
+- Unrestricted, direct access to the whole filesystem
 
 **Does not protect against:**
 
 - **Container escape.** A container is containment, not a strong security boundary. Escape should be hard, not impossible.
 - **Deferred escape.** Container-planted code can get executed on the host, when user performs some action on the host. Planting files under shared `.git` folder is an example escape path.
 - **VS Code "Reopen in Container".** The command runs an extension host *inside* the container wired to your editor over RPC, and container code can drive host-only editor commands (`terminal.newLocal` then `sendSequence`) to run shell commands on your host. This is [Microsoft's design](https://github.com/microsoft/vscode-remote-release/issues/6608#issuecomment-1112960548), not a bug here ([how it works](https://blog.theredguild.org/leveraging-vscode-internals-to-escape-containers/)).
-- **Network rules overwrite**: Container has passwordless sudo, user can change the 
+- **Network rules overwrite**: Container has `NET_ADMIN` and passwordless sudo, its user can change the iptables rules dynamically. 
 
 **Also not isolated:** forwarded SSH agent (container code can authenticate as you; keys stay on the host), `~/.gitconfig` (read-only). The Docker socket is not mounted.
 
