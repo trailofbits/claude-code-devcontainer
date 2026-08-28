@@ -4,7 +4,7 @@ A containerized development environment for running Claude Code with `bypassPerm
 
 ## Why Use This?
 
-Running Claude with `bypassPermissions` on your host machine is risky—it can execute any command without confirmation. This devcontainer provides **filesystem isolation**, so unrestricted Claude damages a disposable container instead of your host system.
+Running Claude with `bypassPermissions` on your host machine is risky—it can execute any command without confirmation. This devcontainer provides **filesystem isolation**, so unrestricted Claude reaches only your project directory and a disposable container, not the rest of your host.
 
 **Designed for:**
 
@@ -65,7 +65,7 @@ Choose the pattern that fits your workflow:
 
 ### Pattern A: Per-Project Container (Isolated)
 
-Each project gets its own container with independent volumes. Best for one-off reviews, untrusted repos, or when you need isolation between projects.
+Each project gets its own container with independent volumes. Best for one-off reviews or when you need isolation between projects.
 
 **Terminal:**
 
@@ -145,8 +145,10 @@ devc exec CMD       Execute command inside the container
 devc upgrade        Upgrade Claude Code in the container
 devc mount SRC DST  Add a bind mount (host → container)
 devc sync [NAME]    Sync Claude Code sessions from devcontainers to host
+devc cp SRC DST     Copy a path from the container to the host
 devc template DIR   Copy devcontainer files to directory
 devc self-install   Install devc to ~/.local/bin
+devc update         Update devc to the latest version
 ```
 
 > **Note:** Use `devc destroy` to clean up a project's Docker resources. Removing containers manually (e.g., `docker rm`) will leave orphaned volumes and images behind that `devc destroy` won't be able to find.
@@ -237,7 +239,7 @@ sudo iptables -A OUTPUT -j DROP
 | Tools | `rg`, `fd`, `tmux`, `fzf`, `delta`, `iptables`, `ipset` |
 | Volumes (survive rebuilds) | Command history (`/commandhistory`), Claude config (`~/.claude`), GitHub CLI auth (`~/.config/gh`) |
 | Host mounts | `~/.gitconfig`, `.devcontainer/`, `.git/config`, `.git/hooks/` (all read-only) |
-| Auto-configured | `bypassPermissions` mode (via `post_install.py`), [anthropics](https://github.com/anthropics/claude-code-plugins) + [trailofbits](https://github.com/trailofbits/claude-code-plugins) skills, git-delta |
+| Auto-configured | `bypassPermissions` mode (via `post_install.py`), skills from [anthropics/skills](https://github.com/anthropics/skills) + [trailofbits/skills](https://github.com/trailofbits/skills) + [trailofbits/skills-curated](https://github.com/trailofbits/skills-curated), git-delta |
 
 Volumes are stored outside the container, so your shell history, Claude settings, and `gh` login persist even after `devc rebuild`. Host `~/.gitconfig` is mounted read-only for git identity.
 
