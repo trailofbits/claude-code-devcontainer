@@ -506,9 +506,7 @@ sync_one_container() {
   # Sync each project key subdirectory.
   for key_path in "$tmpdir"/*/; do
     [[ ! -d "$key_path" ]] && continue
-    # The glob's trailing slash makes find follow symlinks, and docker cp
-    # preserves them, so a container-planted symlink would pull host files
-    # from outside the projects dir into it.
+    # Does not follow symlinks
     [[ -L "${key_path%/}" ]] && continue
     local key dest_key
     key=$(basename "$key_path")
