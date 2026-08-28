@@ -259,7 +259,7 @@ sudo iptables -A OUTPUT -j DROP
 
 | Component | Details |
 |-----------|---------|
-| Base | Ubuntu 24.04, Node.js 22, Python 3.13 + uv, zsh |
+| Base | Ubuntu 24.04, Node.js 24, Python 3.13 + uv, zsh |
 | User | `vscode` (passwordless sudo), working dir `/workspace` |
 | Tools | `rg`, `fd`, `tmux`, `fzf`, `delta`, `iptables`, `ipset` |
 | Volumes (survive rebuilds) | Command history (`/commandhistory`), Claude config (`~/.claude`), GitHub CLI auth (`~/.config/gh`) |
