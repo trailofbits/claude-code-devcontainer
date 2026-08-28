@@ -201,22 +201,45 @@ By default, containers have full outbound network access. For stricter security,
 
 ### Example: Claude + GitHub + Package Registries
 
+Run this inside the container (`devc shell`). The allowlist lives in an `ipset` that the
+`iptables` rule references by name, so refreshing it does not mean re-adding rules.
+
 ```bash
-sudo iptables -A OUTPUT -d api.anthropic.com -j ACCEPT
-sudo iptables -A OUTPUT -d github.com -j ACCEPT
-sudo iptables -A OUTPUT -d raw.githubusercontent.com -j ACCEPT
-sudo iptables -A OUTPUT -d registry.npmjs.org -j ACCEPT
-sudo iptables -A OUTPUT -d pypi.org -j ACCEPT
-sudo iptables -A OUTPUT -d files.pythonhosted.org -j ACCEPT
+# 1. Loopback, plus DNS to whatever resolver the container was given.
+#    Without this the final DROP blocks name resolution and nothing works.
 sudo iptables -A OUTPUT -o lo -j ACCEPT
+for ns in $(awk '/^nameserver/{print $2}' /etc/resolv.conf); do
+  sudo iptables -A OUTPUT -p udp -d "$ns" --dport 53 -j ACCEPT
+  sudo iptables -A OUTPUT -p tcp -d "$ns" --dport 53 -j ACCEPT
+done
+
+# 2. Resolve the allowlist into an ipset.
+sudo ipset create allowed-egress hash:ip -exist
+for host in api.anthropic.com github.com raw.githubusercontent.com \
+            registry.npmjs.org pypi.org files.pythonhosted.org; do
+  for ip in $(getent ahostsv4 "$host" | awk '{print $1}' | sort -u); do
+    sudo ipset add allowed-egress "$ip" -exist
+  done
+done
+
+# 3. Allow the set, drop everything else.
+sudo iptables -A OUTPUT -m set --match-set allowed-egress dst -j ACCEPT
 sudo iptables -A OUTPUT -j DROP
 ```
+
+Re-run **step 2 only** to pick up new addresses. These hosts are CDN-fronted and their
+IPs rotate, so a set populated once goes stale and the allowlist silently stops matching.
 
 ### Trade-offs
 
 - Blocks package managers unless you allowlist registries
 - May break tools that require network access
-- DNS resolution still works (consider blocking if paranoid)
+- DNS is permitted, so DNS remains an exfiltration channel. Restricting it to the
+  container's resolver (above) limits which server answers, not what is asked
+- The allowlist is per-IP, so any other site behind the same CDN address is also reachable
+- IPv6 is not filtered. If your Docker network has an IPv6 default route, mirror the
+  rules with `ip6tables` and an `ipset ... family inet6`
+- Rules are lost on container restart; re-apply them per session
 
 ## Threat Model
 
@@ -226,9 +249,10 @@ sudo iptables -A OUTPUT -j DROP
 
 - **Container escape.** A container is containment, not a strong security boundary. Escape should be hard, not impossible.
 - **Deferred escape.** Container-planted code can get executed on the host, when user performs some action on the host. Planting files under shared `.git` folder is an example escape path.
-- **VS Code "Reopen in Container".** It runs an extension host *inside* the container wired to your editor over RPC, and container code can drive host-only editor commands (`terminal.newLocal` then `sendSequence`) to run shell commands on your host. This is [Microsoft's design](https://github.com/microsoft/vscode-remote-release/issues/6608#issuecomment-1112960548), not a bug here ([how it works](https://blog.theredguild.org/leveraging-vscode-internals-to-escape-containers/)).
+- **VS Code "Reopen in Container".** The command runs an extension host *inside* the container wired to your editor over RPC, and container code can drive host-only editor commands (`terminal.newLocal` then `sendSequence`) to run shell commands on your host. This is [Microsoft's design](https://github.com/microsoft/vscode-remote-release/issues/6608#issuecomment-1112960548), not a bug here ([how it works](https://blog.theredguild.org/leveraging-vscode-internals-to-escape-containers/)).
+- **Network rules overwrite**: Container has passwordless sudo, user can change the 
 
-**Also not isolated:** network (full outbound by default, see [Network Isolation](#network-isolation)), forwarded SSH agent (container code can authenticate as you; keys stay on the host), `~/.gitconfig` (read-only). The Docker socket is not mounted.
+**Also not isolated:** forwarded SSH agent (container code can authenticate as you; keys stay on the host), `~/.gitconfig` (read-only). The Docker socket is not mounted.
 
 ## Container Details
 
