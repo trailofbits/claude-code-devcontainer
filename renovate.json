@@ -15,7 +15,7 @@
     {
       "customType": "regex",
       "description": "Update ARG versions in Dockerfile from GitHub releases",
-      "fileMatch": ["(^|/)Dockerfile$"],
+      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)\\n(?:ENV|ARG) .+?_VERSION=(?<currentValue>.+?)\\n"
       ],
