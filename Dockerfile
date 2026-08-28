@@ -95,6 +95,9 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
   fnm install ${NODE_VERSION} && \
   fnm default ${NODE_VERSION}
 
+# fnm's shell hook is zsh-only, so without this node/npm are missing from bash/sh
+ENV PATH="$FNM_DIR/aliases/default/bin:$PATH"
+
 # Install Oh My Zsh
 # renovate: datasource=github-releases depName=deluan/zsh-in-docker
 ARG ZSH_IN_DOCKER_VERSION=1.2.1

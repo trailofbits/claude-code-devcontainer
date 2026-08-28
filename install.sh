@@ -12,7 +12,8 @@ while [[ -L "$SOURCE" ]]; do
   [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
-SCRIPT_NAME="$(basename "$0")"
+# From SOURCE, not $0: via the installed devc symlink $0 is "devc"
+SCRIPT_NAME="$(basename "$SOURCE")"
 
 # Colors for output
 RED='\033[0;31m'
@@ -99,6 +100,30 @@ check_no_sys_admin() {
 
 get_workspace_folder() {
   echo "${1:-$(pwd)}"
+}
+
+# Docker rejects a bind mount whose source is missing, so the .git mounts break
+# container creation in a non-repo workspace. `devc template` restores them.
+strip_git_mounts_if_not_repo() {
+  local devcontainer_json="$1"
+  local workspace="$2"
+
+  [[ -f "$devcontainer_json" ]] || return 0
+  [[ -f "$workspace/.git/config" && -d "$workspace/.git/hooks" ]] && return 0
+
+  local updated
+  updated=$(jq '
+    .mounts = ((.mounts // []) | map(select(
+      (contains("target=/workspace/.git/config") or
+       contains("target=/workspace/.git/hooks")) | not
+    )))
+  ' "$devcontainer_json") || return 0
+
+  [[ "$updated" == "$(cat "$devcontainer_json")" ]] && return 0
+
+  echo "$updated" >"$devcontainer_json"
+  log_warn "Workspace is not a git repository - removed the read-only .git mounts."
+  log_info "After 'git init', re-run 'devc template' to restore them."
 }
 
 # Extract custom mounts from devcontainer.json to a temp file
@@ -221,6 +246,8 @@ cmd_template() {
     log_info "Custom mounts restored"
   fi
 
+  strip_git_mounts_if_not_repo "$devcontainer_json" "$target_dir"
+
   log_success "Template installed to $devcontainer_dir"
 }
 
@@ -230,6 +257,8 @@ cmd_up() {
 
   check_devcontainer_cli
   check_no_sys_admin "$workspace_folder"
+  strip_git_mounts_if_not_repo \
+    "$workspace_folder/.devcontainer/devcontainer.json" "$workspace_folder"
   log_info "Starting devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder"
@@ -242,6 +271,8 @@ cmd_rebuild() {
 
   check_devcontainer_cli
   check_no_sys_admin "$workspace_folder"
+  strip_git_mounts_if_not_repo \
+    "$workspace_folder/.devcontainer/devcontainer.json" "$workspace_folder"
   log_info "Rebuilding devcontainer in $workspace_folder..."
 
   devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container
@@ -780,10 +811,13 @@ cmd_destroy() {
     docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true
   fi
 
-  for vol in "${VOLUMES[@]}"; do
-    log_info "Removing volume: $vol"
-    docker volume rm -f "$vol" >/dev/null 2>&1 || true
-  done
+  # bash 3.2 + set -u: expanding an empty array is an unbound variable error
+  if [[ ${#VOLUMES[@]} -gt 0 ]]; then
+    for vol in "${VOLUMES[@]}"; do
+      log_info "Removing volume: $vol"
+      docker volume rm -f "$vol" >/dev/null 2>&1 || true
+    done
+  fi
 
   if [[ -n "$IMAGE" ]]; then
     log_info "Removing image: $IMAGE"
