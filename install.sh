@@ -286,6 +286,33 @@ cmd_template() {
   log_success "Template installed to $devcontainer_dir"
 }
 
+# Run `devcontainer up`, then check the privileges Docker actually granted:
+# features (e.g. docker-in-docker) and image metadata can request privileged
+# mode or capabilities that check_no_sys_admin can't see in devcontainer.json.
+devcontainer_up() {
+  local result container_id found
+  # The CLI logs to stderr and prints a JSON result on stdout
+  result=$(devcontainer up "$@" | tee /dev/stderr)
+  container_id=$(jq -r '.containerId // empty' <<<"$result" 2>/dev/null) || true
+  [[ -n "$container_id" ]] || return 0
+
+  found=$(docker inspect --format '{{json .HostConfig}}' "$container_id" | jq -r '
+    def grants_sys_admin:
+      ascii_upcase | ltrimstr("CAP_") | (. == "SYS_ADMIN" or . == "ALL");
+    [
+      (select(.Privileged == true) | "privileged mode"),
+      (.CapAdd[]? | strings | select(grants_sys_admin) | "capability \(.)")
+    ] | first // empty
+  ') || true
+  if [[ -n "$found" ]]; then
+    docker stop "$container_id" >/dev/null
+    log_error "The container was started with $found, so it was stopped."
+    log_error "This defeats the read-only .devcontainer mount. If devcontainer.json"
+    log_error "doesn't request it, a feature or the base image does."
+    exit 1
+  fi
+}
+
 cmd_up() {
   local workspace_folder
   workspace_folder="$(get_workspace_folder "${1:-}")"
@@ -297,7 +324,7 @@ cmd_up() {
     "$workspace_folder/.devcontainer/devcontainer.json" "$workspace_folder"
   log_info "Starting devcontainer in $workspace_folder..."
 
-  devcontainer up --workspace-folder "$workspace_folder"
+  devcontainer_up --workspace-folder "$workspace_folder"
   log_success "Devcontainer started"
 }
 
@@ -312,7 +339,7 @@ cmd_rebuild() {
     "$workspace_folder/.devcontainer/devcontainer.json" "$workspace_folder"
   log_info "Rebuilding devcontainer in $workspace_folder..."
 
-  devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container
+  devcontainer_up --workspace-folder "$workspace_folder" --remove-existing-container
   log_success "Devcontainer rebuilt"
 }
 
@@ -402,7 +429,7 @@ cmd_mount() {
   strip_git_mounts_if_not_repo "$devcontainer_json" "$workspace_folder"
 
   log_info "Recreating container with new mount..."
-  devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container
+  devcontainer_up --workspace-folder "$workspace_folder" --remove-existing-container
 
   log_success "Mount added: $host_path → $container_path"
 }
