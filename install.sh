@@ -49,6 +49,7 @@ Examples:
     devc rebuild                # Clean rebuild
     devc shell                  # Open interactive shell
     devc self-install           # Install devc to PATH
+    devc self-upgrade           # Upgrade the devc script and libraries
     devc update                 # Update to latest version
     devc exec ls -la            # Run command in container
     devc upgrade                # Upgrade Claude Code to latest
@@ -647,6 +648,23 @@ cmd_self_install() {
   fi
 }
 
+cmd_self_upgrade() {
+    # Check if devc exists in the PATH
+    if hash devc &> /dev/null; then
+        install_path="$(dirname "$(realpath "$(which devc)")")"
+        pushd "$install_path"
+        if git pull; then
+            log_success "Upgraded 'devc' at $install_path"
+        else
+            log_error "Failed to update 'devc', see output above"
+        fi
+        popd
+    else
+        # Install instead
+        cmd_self_install
+    fi
+}
+
 cmd_update() {
   log_info "Updating devc..."
 
@@ -878,6 +896,9 @@ main() {
     ;;
   self-install)
     cmd_self_install
+    ;;
+  self-upgrade)
+    cmd_self_upgrade
     ;;
   update)
     cmd_update
