@@ -99,10 +99,30 @@ check_no_sys_admin() {
   local workspace="${1:-.}"
   local dc_json="$workspace/.devcontainer/devcontainer.json"
   [[ -f "$dc_json" ]] || return 0
-  if jq -e \
-    '.runArgs[]? | select(test("SYS_ADMIN"))' \
-    "$dc_json" >/dev/null 2>&1; then
-    log_error "SYS_ADMIN capability detected in runArgs."
+  # Docker accepts capability names in any case, with or without the CAP_
+  # prefix, and ALL and privileged mode include SYS_ADMIN.
+  local found
+  found=$(jq -r '
+    def grants_sys_admin:
+      ascii_upcase | ltrimstr("CAP_") | (. == "SYS_ADMIN" or . == "ALL");
+    [
+      (select(.privileged == true) | "\"privileged\": true"),
+      (.capAdd[]? | strings | select(grants_sys_admin) | "\"capAdd\": \(.)"),
+      ((.runArgs // []) as $args | range($args | length) as $i
+        | ($args[$i] | strings) as $arg
+        | select(
+            ($arg | test("SYS_ADMIN"; "i")) or
+            ($arg | test("^--privileged(=(1|t|true))?$"; "i")) or
+            ($arg | test("^--cap-add=") and
+              ($arg | ltrimstr("--cap-add=") | grants_sys_admin)) or
+            ($arg == "--cap-add" and
+              ($args[$i + 1] // "" | strings | grants_sys_admin))
+          )
+        | "runArgs: \($arg)\(if $arg == "--cap-add" then " \($args[$i + 1])" else "" end)")
+    ] | first // empty
+  ' "$dc_json" 2>/dev/null) || true
+  if [[ -n "$found" ]]; then
+    log_error "SYS_ADMIN capability or privileged mode requested ($found)."
     log_error "This defeats the read-only .devcontainer mount."
     exit 1
   fi
@@ -145,8 +165,8 @@ strip_git_mounts_if_not_repo() {
 # Security: .devcontainer/ is mounted read-only inside the container to prevent
 # a compromised process from injecting malicious mounts or commands into
 # devcontainer.json that execute on the host during rebuild. This protection
-# requires that SYS_ADMIN is never added to runArgs (it would allow remounting
-# read-write).
+# requires that the container never gets SYS_ADMIN (directly, via ALL, or via
+# privileged mode), which would allow remounting read-write.
 extract_mounts_to_file() {
   local devcontainer_json="$1"
   local temp_file
@@ -266,6 +286,33 @@ cmd_template() {
   log_success "Template installed to $devcontainer_dir"
 }
 
+# Run `devcontainer up`, then check the privileges Docker actually granted:
+# features (e.g. docker-in-docker) and image metadata can request privileged
+# mode or capabilities that check_no_sys_admin can't see in devcontainer.json.
+devcontainer_up() {
+  local result container_id found
+  # The CLI logs to stderr and prints a JSON result on stdout
+  result=$(devcontainer up "$@" | tee /dev/stderr)
+  container_id=$(jq -r '.containerId // empty' <<<"$result" 2>/dev/null) || true
+  [[ -n "$container_id" ]] || return 0
+
+  found=$(docker inspect --format '{{json .HostConfig}}' "$container_id" | jq -r '
+    def grants_sys_admin:
+      ascii_upcase | ltrimstr("CAP_") | (. == "SYS_ADMIN" or . == "ALL");
+    [
+      (select(.Privileged == true) | "privileged mode"),
+      (.CapAdd[]? | strings | select(grants_sys_admin) | "capability \(.)")
+    ] | first // empty
+  ') || true
+  if [[ -n "$found" ]]; then
+    docker stop "$container_id" >/dev/null
+    log_error "The container was started with $found, so it was stopped."
+    log_error "This defeats the read-only .devcontainer mount. If devcontainer.json"
+    log_error "doesn't request it, a feature or the base image does."
+    exit 1
+  fi
+}
+
 cmd_up() {
   local workspace_folder
   workspace_folder="$(get_workspace_folder "${1:-}")"
@@ -277,7 +324,7 @@ cmd_up() {
     "$workspace_folder/.devcontainer/devcontainer.json" "$workspace_folder"
   log_info "Starting devcontainer in $workspace_folder..."
 
-  devcontainer up --workspace-folder "$workspace_folder"
+  devcontainer_up --workspace-folder "$workspace_folder"
   log_success "Devcontainer started"
 }
 
@@ -292,7 +339,7 @@ cmd_rebuild() {
     "$workspace_folder/.devcontainer/devcontainer.json" "$workspace_folder"
   log_info "Rebuilding devcontainer in $workspace_folder..."
 
-  devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container
+  devcontainer_up --workspace-folder "$workspace_folder" --remove-existing-container
   log_success "Devcontainer rebuilt"
 }
 
@@ -382,7 +429,7 @@ cmd_mount() {
   strip_git_mounts_if_not_repo "$devcontainer_json" "$workspace_folder"
 
   log_info "Recreating container with new mount..."
-  devcontainer up --workspace-folder "$workspace_folder" --remove-existing-container
+  devcontainer_up --workspace-folder "$workspace_folder" --remove-existing-container
 
   log_success "Mount added: $host_path → $container_path"
 }
