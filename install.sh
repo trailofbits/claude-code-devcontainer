@@ -290,11 +290,13 @@ cmd_template() {
 # features (e.g. docker-in-docker) and image metadata can request privileged
 # mode or capabilities that check_no_sys_admin can't see in devcontainer.json.
 devcontainer_up() {
-  local result container_id found
-  # The CLI logs to stderr and prints a JSON result on stdout
-  result=$(devcontainer up "$@" | tee /dev/stderr)
+  local result container_id found status=0
+  # The CLI logs to stderr and prints a JSON result on stdout, also when it fails after
+  # creating the container (e.g. a failing postCreateCommand), so check the container
+  # before passing the failure on
+  result=$(devcontainer up "$@" | tee /dev/stderr) || status=$?
   container_id=$(jq -r '.containerId // empty' <<<"$result" 2>/dev/null) || true
-  [[ -n "$container_id" ]] || return 0
+  [[ -n "$container_id" ]] || return "$status"
 
   found=$(docker inspect --format '{{json .HostConfig}}' "$container_id" | jq -r '
     def grants_sys_admin:
@@ -311,6 +313,7 @@ devcontainer_up() {
     log_error "doesn't request it, a feature or the base image does."
     exit 1
   fi
+  return "$status"
 }
 
 cmd_up() {
