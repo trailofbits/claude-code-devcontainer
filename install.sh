@@ -311,31 +311,50 @@ cmd_template() {
   log_success "Template installed to $devcontainer_dir"
 }
 
-# Run `devcontainer up`, then check the privileges Docker actually granted:
-# features (e.g. docker-in-docker) and image metadata can request privileged
-# mode or capabilities that check_no_sys_admin can't see in devcontainer.json.
+# Run `devcontainer up`, then check the privileges Docker actually granted: the
+# image's metadata can request privileged mode or capabilities that
+# check_no_sys_admin can't see before the image is built. Fails closed: a
+# container it can't inspect is stopped.
 devcontainer_up() {
-  local result container_id found status=0
+  local result container_id host_config found status=0
   # The CLI logs to stderr and prints a JSON result on stdout, also when it fails after
   # creating the container (e.g. a failing postCreateCommand), so check the container
   # before passing the failure on
-  result=$(devcontainer up "$@" | tee /dev/stderr) || status=$?
+  result=$(devcontainer up "$@") || status=$?
+  [[ -n "$result" ]] && printf '%s\n' "$result"
   container_id=$(jq -r '.containerId // empty' <<<"$result" 2>/dev/null) || true
-  [[ -n "$container_id" ]] || return "$status"
+  if [[ -z "$container_id" ]]; then
+    if [[ "$status" -eq 0 ]]; then
+      log_error "devcontainer up returned no container ID, so its privileges can't be checked."
+      exit 1
+    fi
+    return "$status"
+  fi
 
-  found=$(docker inspect --format '{{json .HostConfig}}' "$container_id" | jq -r '
-    def grants_sys_admin:
-      ascii_upcase | ltrimstr("CAP_") | (. == "SYS_ADMIN" or . == "ALL");
-    [
-      (select(.Privileged == true) | "privileged mode"),
-      (.CapAdd[]? | strings | select(grants_sys_admin) | "capability \(.)")
-    ] | first // empty
-  ') || true
+  if ! host_config=$(docker inspect --format '{{json .HostConfig}}' "$container_id") ||
+    ! found=$(jq -r "$GRANTS_SYS_ADMIN_JQ"'
+      [
+        (select(.Privileged == true) | "privileged mode"),
+        (.CapAdd[]? | strings | select(grants_sys_admin) | "capability \(.)")
+      ] | first // empty
+    ' <<<"$host_config"); then
+    if docker stop "$container_id" >/dev/null; then
+      log_error "Could not check the container's privileges, so it was stopped."
+    else
+      log_error "Could not check the container's privileges, nor stop it."
+      log_error "It may still be running: docker stop $container_id"
+    fi
+    exit 1
+  fi
   if [[ -n "$found" ]]; then
-    docker stop "$container_id" >/dev/null
-    log_error "The container was started with $found, so it was stopped."
+    if docker stop "$container_id" >/dev/null; then
+      log_error "The container was started with $found, so it was stopped."
+    else
+      log_error "The container was started with $found, and stopping it failed."
+      log_error "It may still be running: docker stop $container_id"
+    fi
     log_error "This defeats the read-only .devcontainer mount. If devcontainer.json"
-    log_error "doesn't request it, a feature or the base image does."
+    log_error "doesn't request it, a feature or the image does."
     exit 1
   fi
   return "$status"
