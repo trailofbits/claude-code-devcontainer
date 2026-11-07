@@ -157,7 +157,11 @@ check_no_sys_admin() {
 # their devcontainer.local_folder label, which must match the path they were
 # created with ("devc ." passes ".", which the CLI resolves to the real path).
 get_workspace_folder() {
-  (cd "${1:-.}" && pwd -P)
+  local dir="${1:-.}"
+  (CDPATH='' cd -- "$dir" 2>/dev/null && pwd -P) || {
+    log_error "Directory does not exist: $dir"
+    exit 1
+  }
 }
 
 # Docker rejects a bind mount whose source is missing, so the .git mounts break
