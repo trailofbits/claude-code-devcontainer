@@ -85,8 +85,8 @@ check_devcontainer_cli() {
   fi
 }
 
-# jq failures are mostly ignored below (e.g. check_no_sys_admin reads one as
-# "no SYS_ADMIN"), so a missing jq would silently skip checks and drop mounts.
+# jq failures are mostly ignored below (e.g. strip_git_mounts_if_not_repo then
+# leaves the file alone), so a missing jq would silently skip steps and drop mounts.
 check_jq() {
   if ! command -v jq &>/dev/null; then
     log_error "jq not found."
@@ -95,32 +95,57 @@ check_jq() {
   fi
 }
 
+# Docker accepts capability names in any case, with or without the CAP_ prefix,
+# and ALL and privileged mode include SYS_ADMIN.
+GRANTS_SYS_ADMIN_JQ='
+  def grants_sys_admin:
+    ascii_upcase | ltrimstr("CAP_") | (. == "SYS_ADMIN" or . == "ALL");'
+
+# Reads the configuration through the devcontainer CLI, which finds and parses it
+# (JSONC included) like `devcontainer up` does, and resolves the features it lists
+# (e.g. docker-in-docker requests privileged mode), so this runs before anything
+# starts. Only the current file and its features are checked: privileges from image
+# metadata only exist after the build, so devcontainer_up checks the container
+# itself. Resolving features needs the network; without it, the file is still
+# checked and the features are left to devcontainer_up.
 check_no_sys_admin() {
   local workspace="${1:-.}"
-  local dc_json="$workspace/.devcontainer/devcontainer.json"
-  [[ -f "$dc_json" ]] || return 0
-  # Docker accepts capability names in any case, with or without the CAP_
-  # prefix, and ALL and privileged mode include SYS_ADMIN.
-  local found
-  found=$(jq -r '
-    def grants_sys_admin:
-      ascii_upcase | ltrimstr("CAP_") | (. == "SYS_ADMIN" or . == "ALL");
+  local config found
+  if ! config=$(devcontainer read-configuration --include-features-configuration \
+    --workspace-folder "$workspace" 2>/dev/null); then
+    if ! config=$(devcontainer read-configuration --workspace-folder "$workspace" 2>/dev/null); then
+      log_error "Could not find or read a devcontainer configuration in $workspace."
+      exit 1
+    fi
+    log_warn "Could not resolve the features (offline, or a feature can't be found):"
+    log_warn "their privileges are only checked once the container has started."
+  fi
+  if ! found=$(jq -r "$GRANTS_SYS_ADMIN_JQ"'
     [
-      (select(.privileged == true) | "\"privileged\": true"),
-      (.capAdd[]? | strings | select(grants_sys_admin) | "\"capAdd\": \(.)"),
-      ((.runArgs // []) as $args | range($args | length) as $i
-        | ($args[$i] | strings) as $arg
-        | select(
-            ($arg | test("SYS_ADMIN"; "i")) or
-            ($arg | test("^--privileged(=(1|t|true))?$"; "i")) or
-            ($arg | test("^--cap-add=") and
-              ($arg | ltrimstr("--cap-add=") | grants_sys_admin)) or
-            ($arg == "--cap-add" and
-              ($args[$i + 1] // "" | strings | grants_sys_admin))
-          )
-        | "runArgs: \($arg)\(if $arg == "--cap-add" then " \($args[$i + 1])" else "" end)")
+      (.configuration | objects | (
+        (select(.privileged == true) | "\"privileged\": true"),
+        (.capAdd[]? | strings | select(grants_sys_admin) | "\"capAdd\": \(.)"),
+        ((.runArgs // []) as $args | range($args | length) as $i
+          | ($args[$i] | strings) as $arg
+          | select(
+              ($arg | test("SYS_ADMIN"; "i")) or
+              ($arg | test("^--privileged(=(1|t|true))?$"; "i")) or
+              ($arg | test("^--cap-add=") and
+                ($arg | ltrimstr("--cap-add=") | grants_sys_admin)) or
+              ($arg == "--cap-add" and
+                ($args[$i + 1] // "" | strings | grants_sys_admin))
+            )
+          | "runArgs: \($arg)\(if $arg == "--cap-add" then " \($args[$i + 1])" else "" end)")
+      )),
+      (.featuresConfiguration.featureSets[]?.features[]? | (
+        (select(.privileged == true) | "feature \(.id): \"privileged\": true"),
+        (.capAdd[]? | strings | select(grants_sys_admin) | "feature \(.id): \"capAdd\": \(.)")
+      ))
     ] | first // empty
-  ' "$dc_json" 2>/dev/null) || true
+  ' <<<"$config"); then
+    log_error "Could not check the devcontainer configuration for SYS_ADMIN."
+    exit 1
+  fi
   if [[ -n "$found" ]]; then
     log_error "SYS_ADMIN capability or privileged mode requested ($found)."
     log_error "This defeats the read-only .devcontainer mount."
