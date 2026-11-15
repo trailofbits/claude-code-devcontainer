@@ -7,6 +7,7 @@ Runs on container creation to set up:
 - Claude settings (bypassPermissions mode)
 - Tmux configuration (200k history, mouse support)
 - Global gitignore and container-local git config
+- Optional project setup script (.devcontainer/project_setup.sh)
 """
 
 import contextlib
@@ -15,6 +16,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+# Installed by `devc . --project-setup-script`; keep the name in sync with
+# PROJECT_SETUP_SCRIPT in install.sh. Read-only in the container (.devcontainer mount).
+PROJECT_SETUP_SCRIPT = Path("/workspace/.devcontainer/project_setup.sh")
 
 
 def setup_onboarding_bypass():
@@ -311,6 +316,31 @@ node_modules/
     )
 
 
+def run_project_setup():
+    """Run the optional project setup script, if one was installed.
+
+    Runs last, so the volumes, git config and Claude settings are in place.
+    A failure fails container creation rather than leaving a half set-up one.
+    """
+    if not PROJECT_SETUP_SCRIPT.is_file():
+        return
+
+    print(
+        f"[post_install] Running project setup: {PROJECT_SETUP_SCRIPT}",
+        file=sys.stderr,
+    )
+    result = subprocess.run(
+        ["bash", str(PROJECT_SETUP_SCRIPT)], cwd="/workspace", check=False
+    )
+    if result.returncode != 0:
+        print(
+            f"[post_install] Project setup failed (exit {result.returncode})",
+            file=sys.stderr,
+        )
+        # Negative means killed by a signal
+        sys.exit(result.returncode if result.returncode > 0 else 1)
+
+
 def main():
     """Run all post-install configuration."""
     print("[post_install] Starting post-install configuration...", file=sys.stderr)
@@ -321,6 +351,8 @@ def main():
     setup_claude_settings()
     setup_tmux_config()
     setup_global_gitignore()
+    # Last: the user's script relies on everything above
+    run_project_setup()
 
     print("[post_install] Configuration complete!", file=sys.stderr)
 

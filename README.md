@@ -136,6 +136,7 @@ If you don't set a token, the interactive login flow works as before.
 
 ```
 devc .              Install template + start container in current directory
+devc . --project-setup-script FILE   Same, and run FILE in the container on creation
 devc up             Start the devcontainer
 devc rebuild        Rebuild container (preserves persistent volumes)
 devc destroy [-f]   Remove container, volumes, and image for current project
@@ -188,6 +189,27 @@ This adds a bind mount to `devcontainer.json` and recreates the container. Exist
 **Tip:** A shared "drop folder" is useful for passing files in without mounting your entire home directory.
 
 > **Security note:** Avoid mounting large host directories (e.g., `$HOME`). Every mounted path is writable from inside the container unless `--readonly` is specified, which undermines the filesystem isolation this project provides.
+
+## Project Setup Script
+
+Run your own setup (toolchains, SDKs, dependencies) every time the container is created:
+
+```bash
+devc . --project-setup-script ~/setups/my-project.sh
+devc template --project-setup-script ~/setups/my-project.sh   # without starting
+```
+
+The file is copied to `.devcontainer/project_setup.sh`, whatever its name. Its first line must be a bash or sh shebang (e.g. `#!/usr/bin/env bash`), and it always runs with `bash`.
+
+It runs as the last step of `post_install.py`, as `vscode` (passwordless sudo), from `/workspace`, on every container creation: `devc .`, `devc rebuild`, `devc mount`. It does not run when `devc up` restarts an existing container. Because it runs again on every rebuild, make it safe to rerun.
+
+If it fails, container creation fails with its exit code and the container is left running. Fix the script, then `devc rebuild`.
+
+```bash
+devc template --project-setup-script new.sh && devc rebuild   # update
+devc exec bash /workspace/.devcontainer/project_setup.sh       # test without rebuilding
+rm .devcontainer/project_setup.sh && devc rebuild              # remove
+```
 
 ## Network Isolation
 
