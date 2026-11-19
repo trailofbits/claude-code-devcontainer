@@ -1,7 +1,7 @@
 # Claude Code Devcontainer
-# Based on Microsoft devcontainer image for better devcontainer integration
-FROM ghcr.io/astral-sh/uv:0.10@sha256:10902f58a1606787602f303954cea099626a4adb02acbac4c69920fe9d278f82 AS uv
-FROM mcr.microsoft.com/devcontainers/base:ubuntu24.04@sha256:4bcb1b466771b1ba1ea110e2a27daea2f6093f9527fb75ee59703ec89b5561cb
+FROM ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d  AS uv
+# Requires `docker login dhi.io`
+FROM dhi.io/devcontainers-base:2.2.6-debian-dev@sha256:95f1fa3e1348e3776c5d285743ae86015a1ba8009d07a9047a2027641edaac32
 
 ARG TZ
 ENV TZ="$TZ"
@@ -9,7 +9,7 @@ ENV TZ="$TZ"
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install additional system packages (base image already includes git, curl, sudo, etc.)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends --allow-downgrades \
   # Sandboxing support for Claude Code
   bubblewrap \
   socat \
@@ -25,10 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   nano \
   unzip \
   vim \
+  # The base image ships `2:9.1.1230-2+dhi`; pin to `2:9.1.1230-2+deb13u2+dhi0`
+  vim-common=2:9.1.1230-2+deb13u2+dhi0 \
   # Network tools (for security testing)
   dnsutils \
   ipset \
   iptables \
+  # The base image ships `1.8.11-2+dhi3`; pin to `1.8.11-2+deb13u0+dhi3`
+  libxtables12=1.8.11-2+deb13u0+dhi3 \
   iproute2 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -96,13 +100,6 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 
 # fnm's shell hook is zsh-only, so without this node/npm are missing from bash/sh
 ENV PATH="$FNM_DIR/aliases/default/bin:$PATH"
-
-# Install Oh My Zsh
-# renovate: datasource=github-releases depName=deluan/zsh-in-docker
-ARG ZSH_IN_DOCKER_VERSION=1.2.1
-RUN sh -c "$(curl -fsSL https://github.com/deluan/zsh-in-docker/releases/download/v${ZSH_IN_DOCKER_VERSION}/zsh-in-docker.sh)" -- \
-  -p git \
-  -x
 
 # Copy zsh configuration
 COPY --chown=vscode:vscode .zshrc /home/vscode/.zshrc.custom
