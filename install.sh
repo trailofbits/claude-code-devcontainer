@@ -22,19 +22,25 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Optional per-project script, installed in .devcontainer/ by --project-setup-script.
+# post_install.py runs it by this name: keep the two in sync.
+PROJECT_SETUP_SCRIPT="project_setup.sh"
+
 print_usage() {
   cat <<EOF
 Usage: devc <command> [options]
 
 Commands:
-    .                   Install devcontainer template to current directory and start
-    up                  Start the devcontainer in current directory
+    . [--project-setup-script <path>]
+                        Install devcontainer template to current directory and start
+    up                Start the devcontainer in current directory
     rebuild             Rebuild the devcontainer (preserves auth volumes)
     down                Stop the devcontainer
     shell               Open a shell in the running container
     self-install        Install 'devc' command to ~/.local/bin
     update              Update devc to the latest version
-    template [dir]      Copy devcontainer template to directory (default: current)
+    template [dir] [--project-setup-script <path>]
+                        Copy devcontainer template to directory (default: current)
     exec <cmd>          Execute a command in the running container
     upgrade             Upgrade Claude Code to latest version
     mount <host> <cont> [--readonly]  Add a mount to the devcontainer (recreates container)
@@ -58,6 +64,8 @@ Examples:
     devc cp /some/file ./out    # Copy a path from container to host
     devc destroy                # Remove all project Docker resources
     devc destroy -f             # Skip confirmation prompt
+    devc . --project-setup-script ./setup.sh
+                                # Also run setup.sh in the container on creation
 EOF
 }
 
@@ -266,20 +274,118 @@ update_devcontainer_mounts() {
   echo "$updated" >"$devcontainer_json"
 }
 
+# Checks the file given to --project-setup-script, on the host and before
+# anything is changed. The script always runs as `bash <file>`: the shebang
+# check only catches passing the wrong file.
+validate_project_setup_script() {
+  local path="$1"
+  local shebang_re='^#!.*[/ ](ba)?sh([[:space:]]|$)'
+  local first_line
+
+  if [[ ! -f "$path" || ! -r "$path" ]]; then
+    log_error "Setup script not found or not readable: $path"
+    exit 1
+  fi
+
+  # head, not read: under set -e, read fails on an empty file or a missing final newline
+  first_line=$(head -n 1 "$path")
+  if [[ ! "$first_line" =~ $shebang_re ]]; then
+    log_error "Expected a shell script (first line must be a bash/sh shebang, e.g. #!/usr/bin/env bash): $path"
+    exit 1
+  fi
+}
+
+install_project_setup_script() {
+  local src="$1"
+  local dest="$2/$PROJECT_SETUP_SCRIPT"
+
+  if [[ "$src" -ef "$dest" ]]; then
+    log_info "Project setup script already in place: $dest"
+    return 0
+  fi
+
+  # cp writes through a symlink at the destination, and a cloned repo can
+  # commit one pointing at a host file: remove it first
+  rm -f "$dest"
+  cp "$src" "$dest"
+  log_info "Project setup script installed: $dest"
+}
+
+# A cloned repo can ship its own project setup script, which would then run in
+# the container with sudo and the forwarded tokens: keep it only if confirmed.
+confirm_existing_project_setup_script() {
+  local dest="$1/$PROJECT_SETUP_SCRIPT"
+
+  [[ -e "$dest" || -L "$dest" ]] || return 0
+
+  log_warn "Found $dest"
+  log_warn "It runs inside the container, with sudo and your tokens, on every creation."
+  read -p "Keep it? [y/N] " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    log_info "Keeping the project setup script."
+  else
+    rm -f "$dest"
+    log_info "Removed the project setup script."
+  fi
+}
+
 cmd_template() {
   check_jq
 
-  local target_dir="${1:-.}"
-  target_dir="$(cd "$target_dir" 2>/dev/null && pwd)" || {
-    log_error "Directory does not exist: $1"
+  local target_dir="" setup_script="" arg
+  while [[ $# -gt 0 ]]; do
+    arg="$1"
+    shift
+    case "$arg" in
+    --project-setup-script | --project-setup-script=*)
+      if [[ -n "$setup_script" ]]; then
+        log_error "--project-setup-script can only be given once"
+        exit 1
+      fi
+      if [[ "$arg" == *=* ]]; then
+        setup_script="${arg#*=}"
+      elif [[ $# -gt 0 ]]; then
+        setup_script="$1"
+        shift
+      fi
+      if [[ -z "$setup_script" ]]; then
+        log_error "--project-setup-script requires a path"
+        exit 1
+      fi
+      ;;
+    -*)
+      log_error "Unknown option: $arg"
+      exit 1
+      ;;
+    *)
+      if [[ -n "$target_dir" ]]; then
+        log_error "Unexpected argument: $arg"
+        exit 1
+      fi
+      target_dir="$arg"
+      ;;
+    esac
+  done
+
+  local requested_dir="${target_dir:-.}"
+  target_dir="$(cd "$requested_dir" 2>/dev/null && pwd)" || {
+    log_error "Directory does not exist: $requested_dir"
     exit 1
   }
+
+  # Before the overwrite prompt: a bad script must leave everything unchanged
+  if [[ -n "$setup_script" ]]; then
+    validate_project_setup_script "$setup_script"
+  fi
 
   local devcontainer_dir="$target_dir/.devcontainer"
   local devcontainer_json="$devcontainer_dir/devcontainer.json"
   local preserved_mounts=""
+  local had_devcontainer=false
 
   if [[ -d "$devcontainer_dir" ]]; then
+    had_devcontainer=true
     log_warn "Devcontainer already exists at $devcontainer_dir"
     read -p "Overwrite? [y/N] " -n 1 -r
     echo
@@ -308,6 +414,12 @@ cmd_template() {
     merge_mounts_from_file "$devcontainer_json" "$preserved_mounts"
     rm -f "$preserved_mounts"
     log_info "Custom mounts restored"
+  fi
+
+  if [[ -n "$setup_script" ]]; then
+    install_project_setup_script "$setup_script" "$devcontainer_dir"
+  elif [[ "$had_devcontainer" == true ]]; then
+    confirm_existing_project_setup_script "$devcontainer_dir"
   fi
 
   strip_git_mounts_if_not_repo "$devcontainer_json" "$target_dir"
@@ -792,8 +904,10 @@ cmd_update() {
 }
 
 cmd_dot() {
-  # Install template and start container in one command
-  cmd_template "."
+  # Install template and start container in one command.
+  # "." takes cmd_template's only positional slot, so a stray directory argument
+  # is rejected instead of disagreeing with cmd_up ".".
+  cmd_template "." "$@"
   cmd_up "."
 }
 
@@ -962,7 +1076,7 @@ main() {
 
   case "$command" in
   .)
-    cmd_dot
+    cmd_dot "$@"
     ;;
   up)
     cmd_up "$@"
