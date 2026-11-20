@@ -1,5 +1,8 @@
 # Claude Code in a devcontainer
 
+> [!IMPORTANT]
+> This project is archived and will receive no new features. We recommend using [coop](https://github.com/trailofbits/coop) to isolate agentic workflows.
+
 A containerized development environment for running Claude Code with `bypassPermissions` enabled. Built at [Trail of Bits](https://www.trailofbits.com/) for security audit workflows.
 
 ## Why Use This?
