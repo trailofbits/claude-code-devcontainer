@@ -12,7 +12,9 @@
   },
   "runArgs": [
     "--cap-add=NET_ADMIN",
-    "--cap-add=NET_RAW"
+    "--cap-add=NET_RAW",
+    "--security-opt=apparmor:docker-default",
+    "--security-opt=seccomp:${localWorkspaceFolder}/.devcontainer/seccomp.json"
   ],
   "init": true,
   "updateRemoteUserUID": true,
